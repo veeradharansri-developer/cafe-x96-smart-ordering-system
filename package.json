@@ -1,0 +1,15 @@
+{
+  "name": "cafe-x96-smart-ordering",
+  "version": "1.0.0",
+  "description": "Root workspace of Cafe x96 Smart Ordering System",
+  "scripts": {
+    "install-all": "npm install --prefix frontend && npm install --prefix backend",
+    "frontend": "npm run dev --prefix frontend",
+    "backend": "npm run start --prefix backend",
+    "start": "npm run start --prefix backend",
+    "dev": "npx concurrently --kill-others \"npm run frontend\" \"npm run backend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

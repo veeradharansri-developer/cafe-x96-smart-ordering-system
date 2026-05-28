@@ -1,0 +1,303 @@
+import express from "express";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import cors from "cors";
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+import { menuData } from "./data/menuData.js";
+import { askClaude } from "./services/aiService.js";
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Setup CORS
+app.use(cors({
+  origin: "*", // Allow any client to connect for easy development testing
+  methods: ["GET", "POST", "PATCH"]
+}));
+app.use(express.json());
+
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PATCH"]
+  }
+});
+
+// Pre-seeded database for orders (in-memory)
+let orders = [
+  {
+    id: "ord-101",
+    tableNumber: "3",
+    customerName: "Jane Doe",
+    items: [
+      { id: "d1", name: "Saffron Tres Leches Cake", price: 6.80, quantity: 1 },
+      { id: "c2", name: "Caramel Macchiato Crystal", price: 5.20, quantity: 2 }
+    ],
+    notes: "Please serve cake after the coffee",
+    timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), // 3 hours ago
+    total: 17.20,
+    status: "Served"
+  },
+  {
+    id: "ord-102",
+    tableNumber: "1",
+    customerName: "Alex Smith",
+    items: [
+      { id: "s1", name: "Truffle Cheese Croissant", price: 5.50, quantity: 2 },
+      { id: "c1", name: "Signature Espresso Gold", price: 4.50, quantity: 2 }
+    ],
+    notes: "Make the espresso extra hot",
+    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 mins ago
+    total: 20.00,
+    status: "Preparing"
+  },
+  {
+    id: "ord-103",
+    tableNumber: "5",
+    customerName: "Sam Wilson",
+    items: [
+      { id: "s3", name: "Spicy Peri-Peri Paneer Slider", price: 6.50, quantity: 1 },
+      { id: "t2", name: "Rose Hibiscus Cold Tea", price: 4.20, quantity: 1 }
+    ],
+    notes: "No onions in the slider please",
+    timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 mins ago
+    total: 10.70,
+    status: "Pending"
+  }
+];
+
+// Active help requests tracker
+let activeHelpRequests = {};
+
+// Helper to calculate analytics stats
+function getAnalytics() {
+  const today = new Date().toDateString();
+  const todayOrders = orders.filter(o => new Date(o.timestamp).toDateString() === today);
+  
+  const revenue = todayOrders.reduce((acc, curr) => acc + curr.total, 0);
+  
+  // Count items sold today
+  const itemCounts = {};
+  todayOrders.forEach(order => {
+    order.items.forEach(item => {
+      itemCounts[item.name] = (itemCounts[item.name] || 0) + item.quantity;
+    });
+  });
+  
+  // Sort and get top items
+  const popularItems = Object.entries(itemCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  const activeTables = [...new Set(orders.filter(o => o.status !== "Served").map(o => o.tableNumber))];
+
+  return {
+    totalOrdersToday: todayOrders.length,
+    revenueToday: Number(revenue.toFixed(2)),
+    pendingOrdersCount: orders.filter(o => o.status === "Pending" || o.status === "Preparing").length,
+    activeTablesCount: activeTables.length,
+    activeTablesList: activeTables,
+    popularItems
+  };
+}
+
+// REST Routes
+
+// Get Menu
+app.get("/api/menu", (req, res) => {
+  res.json(menuData);
+});
+
+// Get all orders
+app.get("/api/orders", (req, res) => {
+  res.json(orders);
+});
+
+// Place new order
+app.post("/api/orders", (req, res) => {
+  const { tableNumber, customerName, items, notes } = req.body;
+  
+  if (!tableNumber || !customerName || !items || items.length === 0) {
+    return res.status(400).json({ error: "Missing required order fields" });
+  }
+
+  // Generate clean sequential order id
+  const orderId = `ord-${orders.length + 101}`;
+  
+  // Calculate total
+  const total = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+  const newOrder = {
+    id: orderId,
+    tableNumber: String(tableNumber),
+    customerName,
+    items,
+    notes: notes || "",
+    timestamp: new Date().toISOString(),
+    total: Number(total.toFixed(2)),
+    status: "Pending"
+  };
+
+  orders.push(newOrder);
+
+  // Emit event to admins
+  io.to("admins").emit("new_order", {
+    order: newOrder,
+    analytics: getAnalytics()
+  });
+
+  // Emit event to specific table room
+  io.to(`table:${tableNumber}`).emit("order_placed", newOrder);
+
+  res.status(201).json(newOrder);
+});
+
+// Update order status
+app.patch("/api/orders/:id/status", (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const validStatuses = ["Pending", "Preparing", "Ready", "Served"];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ error: "Invalid status value" });
+  }
+
+  const orderIndex = orders.findIndex(o => o.id === id);
+  if (orderIndex === -1) {
+    return res.status(404).json({ error: "Order not found" });
+  }
+
+  orders[orderIndex].status = status;
+  const updatedOrder = orders[orderIndex];
+
+  // Notify the customer table about the change
+  io.to(`table:${updatedOrder.tableNumber}`).emit("order_status_updated", updatedOrder);
+
+  // Notify admins
+  io.to("admins").emit("order_updated", {
+    order: updatedOrder,
+    analytics: getAnalytics()
+  });
+
+  res.json(updatedOrder);
+});
+
+// Call for assistance
+app.post("/api/help", (req, res) => {
+  const { tableNumber } = req.body;
+  if (!tableNumber) {
+    return res.status(400).json({ error: "Table number is required" });
+  }
+
+  const tableStr = String(tableNumber);
+  activeHelpRequests[tableStr] = new Date().toISOString();
+
+  // Broadcast to admins
+  io.to("admins").emit("help_requested", {
+    tableNumber: tableStr,
+    timestamp: activeHelpRequests[tableStr],
+    activeHelpRequests
+  });
+
+  res.json({ message: "Help requested successfully", activeHelpRequests });
+});
+
+// Resolve assistance request
+app.post("/api/help/resolve", (req, res) => {
+  const { tableNumber } = req.body;
+  const tableStr = String(tableNumber);
+  
+  if (activeHelpRequests[tableStr]) {
+    delete activeHelpRequests[tableStr];
+  }
+
+  io.to("admins").emit("help_resolved", {
+    tableNumber: tableStr,
+    activeHelpRequests
+  });
+
+  res.json({ message: "Help request resolved", activeHelpRequests });
+});
+
+// Claude Chat Assistant Route
+app.post("/api/chat", async (req, res) => {
+  const { messages } = req.body;
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: "Messages history array is required" });
+  }
+
+  try {
+    const aiResponse = await askClaude(messages);
+    res.json({ response: aiResponse });
+  } catch (error) {
+    res.status(500).json({ error: "Error processing chat query" });
+  }
+});
+
+// Get current state for admin initialization
+app.get("/api/admin/init", (req, res) => {
+  res.json({
+    orders,
+    activeHelpRequests,
+    analytics: getAnalytics()
+  });
+});
+
+// Socket.IO Connection Setup
+io.on("connection", (socket) => {
+  // Join a room (admin or table-specific)
+  socket.on("join", (room) => {
+    socket.join(room);
+    console.log(`Socket ${socket.id} joined room: ${room}`);
+  });
+
+  // Client request for help
+  socket.on("request_help", (tableNumber) => {
+    const tableStr = String(tableNumber);
+    activeHelpRequests[tableStr] = new Date().toISOString();
+    io.to("admins").emit("help_requested", {
+      tableNumber: tableStr,
+      timestamp: activeHelpRequests[tableStr],
+      activeHelpRequests
+    });
+  });
+
+  // Admin resolves help request
+  socket.on("resolve_help", (tableNumber) => {
+    const tableStr = String(tableNumber);
+    if (activeHelpRequests[tableStr]) {
+      delete activeHelpRequests[tableStr];
+    }
+    io.to("admins").emit("help_resolved", {
+      tableNumber: tableStr,
+      activeHelpRequests
+    });
+  });
+
+  socket.on("disconnect", () => {
+    console.log(`Socket disconnected: ${socket.id}`);
+  });
+});
+
+// Serve static assets from the frontend build folder
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const frontendDistPath = path.join(__dirname, "../frontend/dist");
+
+app.use(express.static(frontendDistPath));
+
+// Catch-all route to serve React SPA
+app.get("*", (req, res) => {
+  res.sendFile(path.join(frontendDistPath, "index.html"));
+});
+
+// Start Server
+httpServer.listen(PORT, () => {
+  console.log(`Cafe x96 Server running at http://localhost:${PORT}`);
+});

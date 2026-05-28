@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: cafe-x96-smart-ordering
+    env: node
+    plan: free
+    buildCommand: npm run install-all && npm run build --prefix frontend
+    startCommand: npm start
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+        description: "Your Anthropic Claude API Key"

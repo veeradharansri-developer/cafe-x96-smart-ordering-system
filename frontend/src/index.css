@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+  
+  --color-gold: #d4af37;
+  --color-gold-light: #f3e5ab;
+  --color-gold-dark: #aa7c11;
+  --color-coffee: #4b382a;
+  --color-coffee-dark: #2c1d11;
+  --color-coffee-light: #8b5a2b;
+  --color-cream: #fdfaf6;
+  --color-cream-dark: #f4efe6;
+  --color-cream-light: #ffffff;
+}
+
+/* Custom premium scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.2);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(212, 175, 55, 0.4);
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #0b0806;
+  color: #fdfaf6;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light Mode Overrides */
+.light-mode {
+  background-color: #fdfaf6;
+  color: #2c1d11;
+}
+
+/* Custom Glassmorphism styles */
+.glass-panel {
+  background: rgba(20, 16, 14, 0.7);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+.light-mode .glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(75, 56, 42, 0.1);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel-hover:hover {
+  border-color: rgba(212, 175, 55, 0.35);
+  box-shadow: 0 8px 30px rgba(212, 175, 55, 0.08);
+  transform: translateY(-2px);
+}
+
+.light-mode .glass-panel-hover:hover {
+  border-color: rgba(75, 56, 42, 0.25);
+  box-shadow: 0 8px 30px rgba(75, 56, 42, 0.06);
+}
+
+/* Card gradients */
+.gold-gradient-text {
+  background: linear-gradient(135deg, #f3e5ab 0%, #d4af37 50%, #aa7c11 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-gradient-bg {
+  background: linear-gradient(135deg, #aa7c11 0%, #d4af37 50%, #f3e5ab 100%);
+}
+
+.coffee-gradient-bg {
+  background: linear-gradient(135deg, #1c1410 0%, #2c1d11 100%);
+}
+
+.light-mode .coffee-gradient-bg {
+  background: linear-gradient(135deg, #fcfaf7 0%, #f4efe6 100%);
+}
+
+/* Micro animations */
+@keyframes pulse-gold {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px 6px rgba(212, 175, 55, 0.2);
+  }
+}
+
+.pulse-gold-btn {
+  animation: pulse-gold 2s infinite;
+}
+
+@keyframes float-gentle {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.float-animation {
+  animation: float-gentle 4s ease-in-out infinite;
+}
+
+/* Base custom resets */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
