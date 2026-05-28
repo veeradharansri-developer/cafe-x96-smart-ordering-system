@@ -77,6 +77,7 @@ export function CartProvider({ children }) {
   }, [socket, tableId, activeOrder]);
 
   const addToCart = (product) => {
+    if (product.isOutOfStock) return; // Prevent adding out-of-stock items
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {

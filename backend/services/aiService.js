@@ -12,30 +12,6 @@ if (isApiKeyConfigured) {
   anthropic = new Anthropic({ apiKey });
 }
 
-// Generate a string listing of our menu for AI context injection
-const menuContext = menuData
-  .map(
-    (item) =>
-      `- [${item.category}] ${item.name} ($${item.price.toFixed(2)}) - ${item.isVeg ? "Veg" : "Non-Veg"}. Rating: ${item.rating}. Description: ${item.description}`
-  )
-  .join("\n");
-
-const systemPrompt = `You are "Bean", the friendly, premium, and sophisticated AI Chatbot Assistant for "Cafe x96".
-Your goal is to guide customers through our menu, recommend drinks/combos, answer diet questions, and chat in a warm, welcoming cafe host style.
-
-Here is the exact Cafe x96 Menu:
-${menuContext}
-
-Rules:
-1. ONLY recommend and discuss items that are on the Cafe x96 menu. If they ask for something not on the menu, politely say we don't serve it, but offer a close match from our menu.
-2. If they ask for recommendations:
-   - Strong Coffee: Suggest Signature Espresso Gold.
-   - Sweet Coffee: Suggest Caramel Macchiato Crystal.
-   - Cool Drink: Suggest Rose Hibiscus Cold Tea or Irish Whiskey Brew (Non-Alcoholic).
-   - Spicy Snack: Suggest Spicy Peri-Peri Paneer Slider.
-   - Match/Tea: Suggest Royal Matcha Latte or Cardamom Masala Chai.
-3. Be brief, warm, and use cafe-themed emojis (☕, 🥐, 🍵, 🍰, ✨). Keep responses under 3 sentences where possible.`;
-
 // Intelligent fallback logic for when API key is missing or offline
 function generateFallbackResponse(userMessage) {
   const msg = userMessage.toLowerCase();
@@ -79,7 +55,34 @@ function generateFallbackResponse(userMessage) {
   return "I'd love to help you with that! At Cafe x96, we serve signature coffee, craft teas, freshly baked croissants, and premium desserts. Ask me about ingredients, combos, or dietary preferences! ☕✨";
 }
 
-export async function askClaude(messageHistory) {
+export async function askClaude(messageHistory, currentMenu = []) {
+  const menuToUse = currentMenu.length > 0 ? currentMenu : menuData;
+
+  // Generate a string listing of our menu dynamically for AI context injection
+  const menuContext = menuToUse
+    .map(
+      (item) =>
+        `- [${item.category}] ${item.name} ($${item.price.toFixed(2)}) - ${item.isVeg ? "Veg" : "Non-Veg"}. ${item.isOutOfStock ? "CURRENTLY OUT OF STOCK (DO NOT RECOMMEND)" : "In Stock"}. Rating: ${item.rating}. Description: ${item.description}`
+    )
+    .join("\n");
+
+  const systemPrompt = `You are "Bean", the friendly, premium, and sophisticated AI Chatbot Assistant for "Cafe x96".
+Your goal is to guide customers through our menu, recommend drinks/combos, answer diet questions, and chat in a warm, welcoming cafe host style.
+
+Here is the exact Cafe x96 Menu:
+${menuContext}
+
+Rules:
+1. ONLY recommend and discuss items that are on the Cafe x96 menu. If they ask for something not on the menu, politely say we don't serve it, but offer a close match from our menu.
+2. If they ask for recommendations:
+   - Strong Coffee: Suggest Signature Espresso Gold.
+   - Sweet Coffee: Suggest Caramel Macchiato Crystal.
+   - Cool Drink: Suggest Rose Hibiscus Cold Tea or Irish Whiskey Brew (Non-Alcoholic).
+   - Spicy Snack: Suggest Spicy Peri-Peri Paneer Slider.
+   - Match/Tea: Suggest Royal Matcha Latte or Cardamom Masala Chai.
+3. DO NOT recommend any item that is marked CURRENTLY OUT OF STOCK. If a customer specifically asks for an out-of-stock item, politely inform them it is currently sold out and suggest an available alternative item from the same category!
+4. Be brief, warm, and use cafe-themed emojis (☕, 🥐, 🍵, 🍰, ✨). Keep responses under 3 sentences where possible.`;
+
   if (!isApiKeyConfigured) {
     // Wait briefly to simulate API network call typing state
     await new Promise((resolve) => setTimeout(resolve, 800));
@@ -109,3 +112,4 @@ export async function askClaude(messageHistory) {
     return `${generateFallbackResponse(lastUserMessage)} *(Note: Running in offline assistance mode)*`;
   }
 }
+

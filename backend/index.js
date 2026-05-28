@@ -10,6 +10,8 @@ import { askClaude } from "./services/aiService.js";
 
 dotenv.config();
 
+let currentMenu = menuData.map(item => ({ ...item, isOutOfStock: false }));
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -111,7 +113,103 @@ function getAnalytics() {
 
 // Get Menu
 app.get("/api/menu", (req, res) => {
-  res.json(menuData);
+  res.json(currentMenu);
+});
+
+// Add new menu item
+app.post("/api/menu", (req, res) => {
+  const { name, category, price, description, image, isVeg, isPopular } = req.body;
+  if (!name || !category || price === undefined) {
+    return res.status(400).json({ error: "Name, category, and price are required." });
+  }
+
+  let prefix = "x";
+  if (category === "Coffee") prefix = "c";
+  else if (category === "Tea") prefix = "t";
+  else if (category === "Snacks") prefix = "s";
+  else if (category === "Desserts") prefix = "d";
+  else if (category === "Combos") prefix = "cb";
+  
+  const existingCategoryCount = currentMenu.filter(item => item.category === category).length;
+  const newId = `${prefix}${existingCategoryCount + 1}`;
+
+  let finalImage = image;
+  if (!image || !image.trim()) {
+    if (category === "Coffee") finalImage = "https://images.unsplash.com/photo-151097252790b-af4f42d87362?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Tea") finalImage = "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Snacks") finalImage = "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Desserts") finalImage = "https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=600&q=80";
+    else finalImage = "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80";
+  }
+
+  const newItem = {
+    id: newId,
+    name,
+    category,
+    price: Number(price),
+    rating: 5.0,
+    reviews: 0,
+    isVeg: isVeg === undefined ? true : !!isVeg,
+    isPopular: !!isPopular,
+    isOutOfStock: req.body.isOutOfStock === undefined ? false : !!req.body.isOutOfStock,
+    description: description || "",
+    image: finalImage
+  };
+
+  currentMenu.push(newItem);
+
+  // Broadcast WebSocket update
+  io.emit("menu_updated", currentMenu);
+
+  res.status(201).json(newItem);
+});
+
+// Edit existing menu item
+app.put("/api/menu/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, category, price, description, image, isVeg, isPopular } = req.body;
+
+  const itemIndex = currentMenu.findIndex(item => item.id === id);
+  if (itemIndex === -1) {
+    return res.status(404).json({ error: "Menu item not found." });
+  }
+
+  const updatedItem = {
+    ...currentMenu[itemIndex],
+    name: name !== undefined ? name : currentMenu[itemIndex].name,
+    category: category !== undefined ? category : currentMenu[itemIndex].category,
+    price: price !== undefined ? Number(price) : currentMenu[itemIndex].price,
+    description: description !== undefined ? description : currentMenu[itemIndex].description,
+    image: image !== undefined ? image : currentMenu[itemIndex].image,
+    isVeg: isVeg !== undefined ? !!isVeg : currentMenu[itemIndex].isVeg,
+    isPopular: isPopular !== undefined ? !!isPopular : currentMenu[itemIndex].isPopular,
+    isOutOfStock: req.body.isOutOfStock !== undefined ? !!req.body.isOutOfStock : currentMenu[itemIndex].isOutOfStock
+  };
+
+  currentMenu[itemIndex] = updatedItem;
+
+  // Broadcast WebSocket update
+  io.emit("menu_updated", currentMenu);
+
+  res.json(updatedItem);
+});
+
+// Delete menu item
+app.delete("/api/menu/:id", (req, res) => {
+  const { id } = req.params;
+  const itemIndex = currentMenu.findIndex(item => item.id === id);
+  
+  if (itemIndex === -1) {
+    return res.status(404).json({ error: "Menu item not found." });
+  }
+
+  const deletedItem = currentMenu[itemIndex];
+  currentMenu = currentMenu.filter(item => item.id !== id);
+
+  // Broadcast WebSocket update
+  io.emit("menu_updated", currentMenu);
+
+  res.json({ message: `Successfully deleted item ${deletedItem.name}`, deletedItem });
 });
 
 // Get all orders
@@ -125,6 +223,14 @@ app.post("/api/orders", (req, res) => {
   
   if (!tableNumber || !customerName || !items || items.length === 0) {
     return res.status(400).json({ error: "Missing required order fields" });
+  }
+
+  // Defensive validation: Check if any item in the order is currently out of stock
+  for (const orderedItem of items) {
+    const matchedItem = currentMenu.find(m => m.id === orderedItem.id);
+    if (matchedItem && matchedItem.isOutOfStock) {
+      return res.status(400).json({ error: `Ordering failed: "${orderedItem.name}" is currently out of stock!` });
+    }
   }
 
   // Generate clean sequential order id
@@ -233,7 +339,7 @@ app.post("/api/chat", async (req, res) => {
   }
 
   try {
-    const aiResponse = await askClaude(messages);
+    const aiResponse = await askClaude(messages, currentMenu);
     res.json({ response: aiResponse });
   } catch (error) {
     res.status(500).json({ error: "Error processing chat query" });

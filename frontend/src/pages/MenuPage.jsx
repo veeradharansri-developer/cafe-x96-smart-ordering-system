@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useCart } from "../context/CartContext";
 import { useTheme } from "../context/ThemeContext";
+import { useSocket } from "../context/SocketContext";
 import { API_BASE } from "../utils/config";
 import { 
   Search, Star, Bell, ShoppingBag, Plus, Minus, Trash, 
   X, Check, Utensils, Award, MessageSquare, Sun, Moon,
-  Clock, CheckCircle, ChefHat, HelpCircle, ChevronRight
+  Clock, CheckCircle, ChefHat, HelpCircle, ChevronRight,
+  AlertTriangle
 } from "lucide-react";
 
 export default function MenuPage() {
@@ -24,6 +26,7 @@ export default function MenuPage() {
     error: checkoutError
   } = useCart();
 
+  const { socket } = useSocket();
   const { isDarkMode, toggleTheme } = useTheme();
   
   const [menu, setMenu] = useState([]);
@@ -49,6 +52,20 @@ export default function MenuPage() {
       });
   }, []);
 
+  // Listen to live menu updates
+  useEffect(() => {
+    if (socket) {
+      socket.on("menu_updated", (updatedMenu) => {
+        setMenu(updatedMenu);
+      });
+    }
+    return () => {
+      if (socket) {
+        socket.off("menu_updated");
+      }
+    };
+  }, [socket]);
+
   const handleCallHelp = () => {
     requestHelp();
     setHelpSent(true);
@@ -72,6 +89,11 @@ export default function MenuPage() {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           item.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
+  });
+
+  const hasOutOfStockItems = cartItems.some((cartItem) => {
+    const menuItem = menu.find((m) => m.id === cartItem.id);
+    return menuItem && menuItem.isOutOfStock;
   });
 
   const getStatusStep = (status) => {
@@ -290,14 +312,16 @@ export default function MenuPage() {
             filteredMenu.map((item) => (
               <div
                 key={item.id}
-                className="glass-panel glass-panel-hover rounded-2xl overflow-hidden p-3 flex gap-3.5 items-center relative animate-in fade-in slide-in-from-bottom-2 duration-300"
+                className={`glass-panel rounded-2xl overflow-hidden p-3 flex gap-3.5 items-center relative animate-in fade-in slide-in-from-bottom-2 duration-300 transition-all ${
+                  item.isOutOfStock ? "opacity-60 bg-black/15" : "glass-panel-hover"
+                }`}
               >
                 {/* Product Image */}
                 <div className="w-24 h-24 rounded-xl overflow-hidden bg-neutral-900 border border-white/10 flex-shrink-0 relative">
                   <img
                     src={item.image}
                     alt={item.name}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover transition-opacity ${item.isOutOfStock ? "opacity-40" : ""}`}
                   />
                   {/* Veg Tag */}
                   <span className={`absolute top-1.5 left-1.5 w-4 h-4 border bg-black/75 rounded flex items-center justify-center ${
@@ -307,6 +331,15 @@ export default function MenuPage() {
                       item.isVeg ? "bg-emerald-500" : "bg-red-500"
                     }`} />
                   </span>
+
+                  {/* Sold Out Image Overlay */}
+                  {item.isOutOfStock && (
+                    <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+                      <span className="bg-rose-600/90 text-white text-[9px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shadow-md">
+                        Sold Out
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Info */}
@@ -333,12 +366,21 @@ export default function MenuPage() {
                       </div>
                       
                       {/* Add Button */}
-                      <button
-                        onClick={() => addToCart(item)}
-                        className="p-1.5 rounded-lg bg-gold hover:bg-gold-dark text-coffee-dark transition-all duration-200 hover:scale-105 active:scale-95"
-                      >
-                        <Plus size={14} />
-                      </button>
+                      {item.isOutOfStock ? (
+                        <button
+                          disabled
+                          className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-cream/30 text-[10px] font-bold uppercase cursor-not-allowed"
+                        >
+                          Sold Out
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => addToCart(item)}
+                          className="p-1.5 rounded-lg bg-gold hover:bg-gold-dark text-coffee-dark transition-all duration-200 hover:scale-105 active:scale-95"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -389,43 +431,64 @@ export default function MenuPage() {
 
             {/* Cart Items List */}
             <div className="flex-1 overflow-y-auto space-y-3.5 mb-4 pr-1">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex items-center justify-between bg-white/5 border border-white/5 p-3 rounded-xl">
-                  <div>
-                    <h4 className="font-display font-bold text-sm text-cream">{item.name}</h4>
-                    <span className="text-xs text-gold font-mono font-semibold">${item.price.toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center bg-black/45 border border-white/10 rounded-lg">
+              {cartItems.map((item) => {
+                const menuItem = menu.find(m => m.id === item.id);
+                const isItemOutOfStock = menuItem && menuItem.isOutOfStock;
+                
+                return (
+                  <div key={item.id} className={`flex items-center justify-between bg-white/5 border p-3 rounded-xl transition-all ${isItemOutOfStock ? "border-rose-500/40 bg-rose-500/5" : "border-white/5"}`}>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-display font-bold text-sm text-cream">{item.name}</h4>
+                        {isItemOutOfStock && (
+                          <span className="text-[9px] bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                            Sold Out
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gold font-mono font-semibold">${item.price.toFixed(2)}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center bg-black/45 border border-white/10 rounded-lg">
+                        <button
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="p-1.5 hover:text-gold transition-colors"
+                          disabled={isItemOutOfStock}
+                        >
+                          <Minus size={12} />
+                        </button>
+                        <span className="w-6 text-center text-xs font-mono font-bold text-cream">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="p-1.5 hover:text-gold transition-colors"
+                          disabled={isItemOutOfStock}
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+
                       <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="p-1.5 hover:text-gold transition-colors"
+                        onClick={() => removeFromCart(item.id)}
+                        className="p-1.5 text-cream/40 hover:text-red-400 transition-colors"
                       >
-                        <Minus size={12} />
-                      </button>
-                      <span className="w-6 text-center text-xs font-mono font-bold text-cream">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="p-1.5 hover:text-gold transition-colors"
-                      >
-                        <Plus size={12} />
+                        <Trash size={14} />
                       </button>
                     </div>
-
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="p-1.5 text-cream/40 hover:text-red-400 transition-colors"
-                    >
-                      <Trash size={14} />
-                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Checkout Form */}
             <form onSubmit={handlePlaceOrder} className="space-y-4 border-t border-gold/10 pt-4">
+              {hasOutOfStockItems && (
+                <div className="text-rose-400 text-xs bg-rose-500/10 border border-rose-500/30 p-3 rounded-xl text-center font-semibold flex items-center justify-center gap-2">
+                  <AlertTriangle size={16} className="text-rose-500 animate-pulse flex-shrink-0" />
+                  Some items in your cart are currently sold out. Please remove them to place order.
+                </div>
+              )}
+
               {checkoutError && (
                 <div className="text-red-400 text-xs bg-red-500/10 border border-red-500/30 p-2.5 rounded-lg text-center">
                   {checkoutError}
@@ -468,7 +531,7 @@ export default function MenuPage() {
               {/* Submit */}
               <button
                 type="submit"
-                disabled={checkoutLoading}
+                disabled={checkoutLoading || hasOutOfStockItems}
                 className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gold hover:bg-gold-dark text-coffee-dark font-display font-bold text-sm transition-all duration-300 disabled:opacity-50"
               >
                 {checkoutLoading ? (
