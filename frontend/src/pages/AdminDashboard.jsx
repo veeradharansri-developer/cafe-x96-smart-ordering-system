@@ -232,6 +232,16 @@ export default function AdminDashboard() {
         throw new Error("API failed to save item");
       }
 
+      const savedItem = await response.json();
+      setMenu((prev) => {
+        const exists = prev.some((i) => i.id === savedItem.id);
+        if (exists) {
+          return prev.map((i) => (i.id === savedItem.id ? savedItem : i));
+        } else {
+          return [...prev, savedItem];
+        }
+      });
+
       setEditorModal({ isOpen: false, item: null });
       addToast(
         editorModal.item
@@ -254,6 +264,7 @@ export default function AdminDashboard() {
         method: "DELETE"
       });
       if (response.ok) {
+        setMenu((prev) => prev.filter((i) => i.id !== itemId));
         addToast(`Deleted "${itemName}"`, "success");
       } else {
         throw new Error("Failed deleting item");
@@ -285,6 +296,9 @@ export default function AdminDashboard() {
         body: JSON.stringify(payload)
       });
       if (!response.ok) throw new Error("Failed status change");
+      
+      const updatedItem = await response.json();
+      setMenu((prev) => prev.map((m) => (m.id === updatedItem.id ? updatedItem : m)));
       addToast(`"${item.name}" is now ${updatedStatus ? "Out of Stock" : "In Stock"}`, "success");
     } catch (error) {
       console.error("Failed to toggle stock:", error);
