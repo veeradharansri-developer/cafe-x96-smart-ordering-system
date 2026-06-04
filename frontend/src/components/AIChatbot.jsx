@@ -1,15 +1,25 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { MessageSquare, X, Send, Coffee, Sparkles } from "lucide-react";
 import { API_BASE } from "../utils/config";
 
+let messageIdCounter = 0;
+const getMessageId = () => {
+  messageIdCounter += 1;
+  return `msg-${messageIdCounter}`;
+};
+
+const getFormattedTime = () => {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
 export default function AIChatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState(() => [
     {
       id: "init",
       sender: "bot",
       content: "Hello! ☕ I'm Bean, your AI cafe assistant. Ask me anything about our coffees, teas, combos, or dietary preferences. How can I help you today?",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: getFormattedTime()
     }
   ]);
   const [inputValue, setInputValue] = useState("");
@@ -30,10 +40,10 @@ export default function AIChatbot() {
     }
 
     const userMsg = {
-      id: Date.now().toString(),
+      id: getMessageId(),
       sender: "user",
       content: text,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: getFormattedTime()
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -60,20 +70,20 @@ export default function AIChatbot() {
       setMessages((prev) => [
         ...prev,
         {
-          id: (Date.now() + 1).toString(),
+          id: getMessageId(),
           sender: "bot",
           content: data.response,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: getFormattedTime()
         }
       ]);
-    } catch (error) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
-          id: (Date.now() + 1).toString(),
+          id: getMessageId(),
           sender: "bot",
           content: "Oops! ☕ My coffee machine got clogged. (Failed to reach server). I can answer simple queries in offline mode: try asking about 'coffee', 'combos', or 'veg items'!",
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          timestamp: getFormattedTime()
         }
       ]);
     } finally {

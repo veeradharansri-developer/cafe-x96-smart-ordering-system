@@ -7,6 +7,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { menuData } from "./data/menuData.js";
 import { askClaude } from "./services/aiService.js";
+import { authMiddleware, requireAdmin } from "./middleware/auth.js";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.use(cors({
   methods: ["GET", "POST", "PATCH"]
 }));
 app.use(express.json());
+app.use(authMiddleware);
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -130,8 +132,14 @@ app.post("/api/menu", (req, res) => {
   else if (category === "Desserts") prefix = "d";
   else if (category === "Combos") prefix = "cb";
   
-  const existingCategoryCount = currentMenu.filter(item => item.category === category).length;
-  const newId = `${prefix}${existingCategoryCount + 1}`;
+  const categoryIds = currentMenu
+    .filter(item => item.id.startsWith(prefix))
+    .map(item => {
+      const num = parseInt(item.id.substring(prefix.length), 10);
+      return isNaN(num) ? 0 : num;
+    });
+  const maxId = categoryIds.length > 0 ? Math.max(...categoryIds) : 0;
+  const newId = `${prefix}${maxId + 1}`;
 
   let finalImage = image;
   if (!image || !image.trim()) {
@@ -146,7 +154,10 @@ app.post("/api/menu", (req, res) => {
     id: newId,
     name,
     category,
+    emoji: req.body.emoji || "🍽️",
     price: Number(price),
+    fullPrice: req.body.fullPrice !== undefined ? Number(req.body.fullPrice) : null,
+    hasVariants: req.body.hasVariants !== undefined ? !!req.body.hasVariants : false,
     rating: 5.0,
     reviews: 0,
     isVeg: isVeg === undefined ? true : !!isVeg,
@@ -178,7 +189,10 @@ app.put("/api/menu/:id", (req, res) => {
     ...currentMenu[itemIndex],
     name: name !== undefined ? name : currentMenu[itemIndex].name,
     category: category !== undefined ? category : currentMenu[itemIndex].category,
+    emoji: req.body.emoji !== undefined ? req.body.emoji : currentMenu[itemIndex].emoji,
     price: price !== undefined ? Number(price) : currentMenu[itemIndex].price,
+    fullPrice: req.body.fullPrice !== undefined ? Number(req.body.fullPrice) : currentMenu[itemIndex].fullPrice,
+    hasVariants: req.body.hasVariants !== undefined ? !!req.body.hasVariants : currentMenu[itemIndex].hasVariants,
     description: description !== undefined ? description : currentMenu[itemIndex].description,
     image: image !== undefined ? image : currentMenu[itemIndex].image,
     isVeg: isVeg !== undefined ? !!isVeg : currentMenu[itemIndex].isVeg,

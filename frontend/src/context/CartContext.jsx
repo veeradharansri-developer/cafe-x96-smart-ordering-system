@@ -1,7 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect } from "react";
 import { useSocket } from "./SocketContext";
 import confetti from "canvas-confetti";
 import { API_BASE } from "../utils/config";
+import { saveLocalOrder } from "../utils/localOrderStore";
+
 
 const CartContext = createContext();
 
@@ -15,14 +18,24 @@ export function CartProvider({ children }) {
 
   // Cart items state
   const [cartItems, setCartItems] = useState(() => {
-    const saved = localStorage.getItem("cartItems");
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem("cartItems");
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Failed to parse cartItems from localStorage", e);
+      return [];
+    }
   });
 
   // Active placed order state
   const [activeOrder, setActiveOrder] = useState(() => {
-    const saved = localStorage.getItem("activeOrder");
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem("activeOrder");
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      console.error("Failed to parse activeOrder from localStorage", e);
+      return null;
+    }
   });
 
   const [loading, setLoading] = useState(false);
@@ -56,9 +69,12 @@ export function CartProvider({ children }) {
 
       // Listen for updates to this table's order
       socket.on("order_status_updated", (updatedOrder) => {
-        if (activeOrder && activeOrder.id === updatedOrder.id) {
-          setActiveOrder(updatedOrder);
-        }
+        setActiveOrder((current) => {
+          if (current && current.id === updatedOrder.id) {
+            return updatedOrder;
+          }
+          return current;
+        });
       });
 
       socket.on("order_placed", (placedOrder) => {
@@ -74,10 +90,11 @@ export function CartProvider({ children }) {
         socket.off("order_placed");
       }
     };
-  }, [socket, tableId, activeOrder]);
+  }, [socket, tableId]);
 
   const addToCart = (product) => {
-    if (product.isOutOfStock) return; // Prevent adding out-of-stock items
+    if (product.isOutOfStock) return;
+    // product.id may be "n1_single", "n1_full", or plain "e1" — use it as the unique cart key
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
@@ -111,7 +128,22 @@ export function CartProvider({ children }) {
     setCartItems([]);
   };
 
-  // Submit order to API
+  // Helper — create a local simulated order (used when backend is unreachable)
+  const _createLocalOrder = (customerName, notes) => {
+    const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    return {
+      id: `ord-local-${Date.now()}`,
+      tableNumber: String(tableId),
+      customerName,
+      items: cartItems,
+      notes: notes || "",
+      timestamp: new Date().toISOString(),
+      total: Number(total.toFixed(2)),
+      status: "Pending",
+    };
+  };
+
+  // Submit order — tries backend first, falls back to local simulation
   const checkout = async (customerName, notes) => {
     if (!tableId) {
       setError("Table session is missing. Please scan a QR code.");
@@ -125,12 +157,15 @@ export function CartProvider({ children }) {
     setLoading(true);
     setError(null);
 
+    // ── Try real backend ───────────────────────────────────────────────────
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
       const response = await fetch(`${API_BASE}/api/orders`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tableNumber: tableId,
           customerName,
@@ -139,24 +174,64 @@ export function CartProvider({ children }) {
         }),
       });
 
+      clearTimeout(timeout);
+
+      // If backend route is missing, Vercel/Vite may return the HTML index page or 404
+      const contentType = response.headers.get("content-type");
+      if (response.status === 404 || (contentType && contentType.includes("text/html"))) {
+        throw new Error("Backend not found");
+      }
+
       if (!response.ok) {
-        throw new Error("Failed to place order. Please try again.");
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to place order. Please try again.");
       }
 
       const placedOrder = await response.json();
       setActiveOrder(placedOrder);
+      // Broadcast order to kitchen via local storage
+      saveLocalOrder(placedOrder);
       clearCart();
-      
-      // Celebrate!
+
       confetti({
         particleCount: 150,
         spread: 80,
         origin: { y: 0.6 },
-        colors: ["#d4af37", "#f3e5ab", "#4b382a", "#8b5a2b"],
+        colors: ["#f97316", "#fbbf24", "#1a0e04", "#7c2d12"],
       });
 
       return true;
+
     } catch (err) {
+      // ── Backend unreachable — fall back to local order ─────────────────
+      if (
+        err.name === "AbortError" ||
+        err.name === "SyntaxError" ||
+        err.message === "Backend not found" ||
+        err.message === "Failed to fetch" ||
+        err.message.includes("fetch") ||
+        err.message.includes("network") ||
+        err.message.includes("NetworkError") ||
+        err.message.includes("Unexpected token")
+      ) {
+        // Simulate the order locally so UX isn't broken on Vercel / offline
+        const localOrder = _createLocalOrder(customerName, notes);
+        setActiveOrder(localOrder);
+        // Broadcast to Admin + Kitchen via localStorage
+        saveLocalOrder(localOrder);
+        clearCart();
+
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ["#f97316", "#fbbf24", "#1a0e04", "#7c2d12"],
+        });
+
+        setLoading(false);
+        return true; // success
+      }
+
       setError(err.message);
       return false;
     } finally {

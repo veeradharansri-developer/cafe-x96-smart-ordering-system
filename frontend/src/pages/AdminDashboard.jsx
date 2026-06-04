@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSocket } from "../context/SocketContext";
 import { playOrderChime, playHelpAlert } from "../utils/sound";
 import { API_BASE } from "../utils/config";
+import { getLocalOrders, updateLocalOrderStatus, calcLocalAnalytics } from "../utils/localOrderStore";
 import QRCode from "qrcode";
 import { 
-  DollarSign, ShoppingBag, Clock, Users, ArrowRight, Check,
+  DollarSign, ShoppingBag, Clock, Users, ArrowRight,
   AlertTriangle, CheckCircle, Smartphone, HelpCircle, X, Download,
-  Plus, Edit2, Trash2, Tag, Leaf, Heart, Star, Sparkles
+  Plus, Edit2, Trash2, Leaf, Heart, Star, Sparkles
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -34,7 +35,7 @@ export default function AdminDashboard() {
 
   // Menu Form fields
   const [formName, setFormName] = useState("");
-  const [formCategory, setFormCategory] = useState("Coffee");
+  const [formCategory, setFormCategory] = useState("Noodles");
   const [formPrice, setFormPrice] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formImage, setFormImage] = useState("");
@@ -50,22 +51,69 @@ export default function AdminDashboard() {
     }, 4500);
   };
 
-  // Initialize Dashboard state from APIs
+  // Merge local orders into state and recalculate analytics
+  const mergeLocalOrders = useCallback((apiOrders = []) => {
+    const local = getLocalOrders();
+    if (local.length === 0) return apiOrders;
+    // Merge: API orders take priority; add any local-only orders
+    const apiIds = new Set(apiOrders.map((o) => o.id));
+    const localOnly = local.filter((o) => !apiIds.has(o.id));
+    return [...localOnly, ...apiOrders];
+  }, []);
+
+  const refreshFromLocal = useCallback(() => {
+    setOrders((prev) => {
+      const merged = mergeLocalOrders(prev.filter((o) => !o.id.startsWith("ord-local-")));
+      const local = getLocalOrders();
+      // Update status of any local orders that changed
+      const updatedPrev = prev.map((o) => {
+        const localVersion = local.find((l) => l.id === o.id);
+        return localVersion || o;
+      });
+      // Add new local orders not in prev
+      const prevIds = new Set(updatedPrev.map((o) => o.id));
+      const newLocal = local.filter((o) => !prevIds.has(o.id));
+      const all = [...newLocal, ...updatedPrev];
+      setAnalytics(calcLocalAnalytics(all));
+      return all;
+    });
+  }, [mergeLocalOrders]);
+
+  // Initialize Dashboard state from APIs + local store
   useEffect(() => {
+    // Load local orders immediately (works offline)
+    const localOrders = getLocalOrders();
+    if (localOrders.length > 0) {
+      setOrders(localOrders);
+      setAnalytics(calcLocalAnalytics(localOrders));
+    }
+
+    // Try to also load from backend API
     fetch(`${API_BASE}/api/admin/init`)
       .then((res) => res.json())
       .then((data) => {
-        setOrders(data.orders);
-        setHelpRequests(data.activeHelpRequests);
-        setAnalytics(data.analytics);
+        const apiOrders = data.orders || [];
+        const merged = mergeLocalOrders(apiOrders);
+        setOrders(merged);
+        setHelpRequests(data.activeHelpRequests || {});
+        setAnalytics(calcLocalAnalytics(merged));
       })
-      .catch((err) => console.error("Failed to load admin initial data:", err));
+      .catch(() => { /* keep local orders */ });
 
     fetch(`${API_BASE}/api/menu`)
       .then((res) => res.json())
       .then((data) => setMenu(data))
-      .catch((err) => console.error("Failed to load menu in admin:", err));
-  }, []);
+      .catch(() => {});
+
+    // Listen for local order events (same-tab: CustomEvent, cross-tab: storage)
+    const handleLocalUpdate = () => refreshFromLocal();
+    window.addEventListener("localOrdersUpdated", handleLocalUpdate);
+    window.addEventListener("storage", handleLocalUpdate);
+    return () => {
+      window.removeEventListener("localOrdersUpdated", handleLocalUpdate);
+      window.removeEventListener("storage", handleLocalUpdate);
+    };
+  }, [mergeLocalOrders, refreshFromLocal]);
 
   // Listen to Socket.IO events for live dashboard refreshes
   useEffect(() => {
@@ -119,11 +167,18 @@ export default function AdminDashboard() {
 
   // Order status transition trigger
   const updateStatus = async (orderId, currentStatus) => {
-    let nextStatus = "";
+    let nextStatus;
     if (currentStatus === "Pending") nextStatus = "Preparing";
     else if (currentStatus === "Preparing") nextStatus = "Ready";
     else if (currentStatus === "Ready") nextStatus = "Served";
     else return;
+
+    // Optimistically update UI immediately
+    setOrders((prev) => {
+      const updated = prev.map((o) => o.id === orderId ? { ...o, status: nextStatus } : o);
+      setAnalytics(calcLocalAnalytics(updated));
+      return updated;
+    });
 
     try {
       const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
@@ -131,9 +186,11 @@ export default function AdminDashboard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus })
       });
-      if (!res.ok) throw new Error("Failed status change");
-    } catch (error) {
-      console.error("Failed to update status:", error);
+      if (!res.ok) throw new Error("API failed");
+    } catch {
+      // Backend unreachable — persist update to localStorage so Kitchen sees it too
+      updateLocalOrderStatus(orderId, nextStatus);
+      addToast(`Order ${orderId} → ${nextStatus}`, "success");
     }
   };
 
@@ -319,7 +376,7 @@ export default function AdminDashboard() {
     return matchesCategory && matchesSearch;
   });
 
-  const categories = ["All", "Coffee", "Tea", "Snacks", "Desserts", "Combos"];
+  const categories = ["All", "Noodles", "Rice", "Manchurian & Starters", "Egg Specials", "Biryani", "Hot Beverages", "Cool Drinks", "Water Bottles"];
 
   return (
     <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
@@ -811,11 +868,14 @@ export default function AdminDashboard() {
                     onChange={(e) => setFormCategory(e.target.value)}
                     className="w-full bg-coffee-dark border border-white/10 focus:border-gold/45 rounded-xl px-3.5 py-2.5 text-xs text-cream focus:outline-none"
                   >
-                    <option value="Coffee">Coffee</option>
-                    <option value="Tea">Tea</option>
-                    <option value="Snacks">Snacks</option>
-                    <option value="Desserts">Desserts</option>
-                    <option value="Combos">Combos</option>
+                    <option value="Noodles">🍜 Noodles</option>
+                    <option value="Rice">🍚 Rice</option>
+                    <option value="Manchurian & Starters">🍗 Manchurian &amp; Starters</option>
+                    <option value="Egg Specials">🍳 Egg Specials</option>
+                    <option value="Biryani">🍛 Biryani</option>
+                    <option value="Hot Beverages">☕ Hot Beverages</option>
+                    <option value="Cool Drinks">🥤 Cool Drinks</option>
+                    <option value="Water Bottles">💧 Water Bottles</option>
                   </select>
                 </div>
 

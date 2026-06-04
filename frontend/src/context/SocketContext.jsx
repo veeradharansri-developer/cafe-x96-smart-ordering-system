@@ -1,38 +1,42 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import { BACKEND_URL } from "../utils/config";
 
 const SocketContext = createContext();
 
 export function SocketProvider({ children }) {
-  const [socket, setSocket] = useState(null);
-  const [isConnected, setIsConnected] = useState(false);
-
-  useEffect(() => {
+  const [socket] = useState(() => {
     console.log("Initializing Socket.IO connection...");
-    const socketInstance = io(BACKEND_URL, {
+    return io(BACKEND_URL, {
       autoConnect: true,
       transports: ["websocket"],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
     });
+  });
+  const [isConnected, setIsConnected] = useState(() => socket.connected);
 
-    socketInstance.on("connect", () => {
-      console.log("Socket connected:", socketInstance.id);
+  useEffect(() => {
+    const handleConnect = () => {
+      console.log("Socket connected:", socket.id);
       setIsConnected(true);
-    });
+    };
 
-    socketInstance.on("disconnect", () => {
+    const handleDisconnect = () => {
       console.log("Socket disconnected");
       setIsConnected(false);
-    });
+    };
 
-    setSocket(socketInstance);
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
 
     return () => {
-      socketInstance.disconnect();
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
+      socket.disconnect();
     };
-  }, []);
+  }, [socket]);
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>
@@ -44,3 +48,4 @@ export function SocketProvider({ children }) {
 export function useSocket() {
   return useContext(SocketContext);
 }
+
