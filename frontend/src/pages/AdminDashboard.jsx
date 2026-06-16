@@ -106,7 +106,10 @@ export default function AdminDashboard() {
       .catch(() => {});
 
     // Listen for local order events (same-tab: CustomEvent, cross-tab: storage)
-    const handleLocalUpdate = () => refreshFromLocal();
+    const handleLocalUpdate = (e) => {
+      if (e && e.type === "storage" && e.key !== "cafe_x96_local_orders") return;
+      refreshFromLocal();
+    };
     window.addEventListener("localOrdersUpdated", handleLocalUpdate);
     window.addEventListener("storage", handleLocalUpdate);
     return () => {
@@ -180,6 +183,9 @@ export default function AdminDashboard() {
       return updated;
     });
 
+    // Keep local storage in sync
+    updateLocalOrderStatus(orderId, nextStatus);
+
     try {
       const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
         method: "PATCH",
@@ -188,8 +194,7 @@ export default function AdminDashboard() {
       });
       if (!res.ok) throw new Error("API failed");
     } catch {
-      // Backend unreachable — persist update to localStorage so Kitchen sees it too
-      updateLocalOrderStatus(orderId, nextStatus);
+      // Backend unreachable but local storage was already updated
       addToast(`Order ${orderId} → ${nextStatus}`, "success");
     }
   };

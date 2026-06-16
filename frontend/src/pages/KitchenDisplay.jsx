@@ -44,7 +44,8 @@ export default function KitchenDisplay() {
     loadOrders();
 
     // Listen for new local orders broadcast by customer view
-    const handleLocalUpdate = () => {
+    const handleLocalUpdate = (e) => {
+      if (e && e.type === "storage" && e.key !== "cafe_x96_local_orders") return;
       const local = getLocalOrders().filter(
         (o) => o.status === "Pending" || o.status === "Preparing" || o.status === "Ready"
       );
@@ -106,6 +107,9 @@ export default function KitchenDisplay() {
         : prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
     );
 
+    // Keep local storage in sync
+    updateLocalOrderStatus(orderId, nextStatus);
+
     try {
       const res = await fetch(`${API_BASE}/api/orders/${orderId}/status`, {
         method: "PATCH",
@@ -114,7 +118,7 @@ export default function KitchenDisplay() {
       });
       if (!res.ok) throw new Error("API failed");
     } catch {
-      updateLocalOrderStatus(orderId, nextStatus);
+      // already updated local storage
     }
   };
 
