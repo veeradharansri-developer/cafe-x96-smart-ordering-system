@@ -30,7 +30,7 @@ function _persist(orders) {
       newValue: JSON.stringify(orders),
       storageArea: localStorage,
     }));
-  } catch (_) { /* ignore */ }
+  } catch { /* ignore */ }
 }
 
 export function saveLocalOrder(order) {

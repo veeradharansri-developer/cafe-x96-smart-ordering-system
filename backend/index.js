@@ -39,12 +39,12 @@ let orders = [
     tableNumber: "3",
     customerName: "Jane Doe",
     items: [
-      { id: "d1", name: "Saffron Tres Leches Cake", price: 6.80, quantity: 1 },
-      { id: "c2", name: "Caramel Macchiato Crystal", price: 5.20, quantity: 2 }
+      { id: "b1", name: "Chicken Biryani", price: 130.00, quantity: 1 },
+      { id: "cd4", name: "Coke 200ml", price: 15.00, quantity: 2 }
     ],
-    notes: "Please serve cake after the coffee",
+    notes: "Please serve cold Coke with the Biryani",
     timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), // 3 hours ago
-    total: 17.20,
+    total: 160.00,
     status: "Served"
   },
   {
@@ -52,12 +52,12 @@ let orders = [
     tableNumber: "1",
     customerName: "Alex Smith",
     items: [
-      { id: "s1", name: "Truffle Cheese Croissant", price: 5.50, quantity: 2 },
-      { id: "c1", name: "Signature Espresso Gold", price: 4.50, quantity: 2 }
+      { id: "m4", name: "Chicken 65", price: 130.00, quantity: 2 },
+      { id: "hb1", name: "Chai", price: 20.00, quantity: 2 }
     ],
-    notes: "Make the espresso extra hot",
+    notes: "Make the Chai extra hot",
     timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 mins ago
-    total: 20.00,
+    total: 300.00,
     status: "Preparing"
   },
   {
@@ -65,12 +65,12 @@ let orders = [
     tableNumber: "5",
     customerName: "Sam Wilson",
     items: [
-      { id: "s3", name: "Spicy Peri-Peri Paneer Slider", price: 6.50, quantity: 1 },
-      { id: "t2", name: "Rose Hibiscus Cold Tea", price: 4.20, quantity: 1 }
+      { id: "n1", name: "Veg Noodles", price: 60.00, quantity: 1 },
+      { id: "cd5", name: "Maaza 250ml", price: 25.00, quantity: 1 }
     ],
-    notes: "No onions in the slider please",
+    notes: "No onions in the noodles please",
     timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 mins ago
-    total: 10.70,
+    total: 85.00,
     status: "Pending"
   }
 ];
@@ -126,11 +126,14 @@ app.post("/api/menu", (req, res) => {
   }
 
   let prefix = "x";
-  if (category === "Coffee") prefix = "c";
-  else if (category === "Tea") prefix = "t";
-  else if (category === "Snacks") prefix = "s";
-  else if (category === "Desserts") prefix = "d";
-  else if (category === "Combos") prefix = "cb";
+  if (category === "Noodles") prefix = "n";
+  else if (category === "Rice") prefix = "r";
+  else if (category === "Manchurian & Starters") prefix = "m";
+  else if (category === "Egg Specials") prefix = "e";
+  else if (category === "Biryani") prefix = "b";
+  else if (category === "Hot Beverages") prefix = "hb";
+  else if (category === "Cool Drinks") prefix = "cd";
+  else if (category === "Water Bottles") prefix = "w";
   
   const categoryIds = currentMenu
     .filter(item => item.id.startsWith(prefix))
@@ -143,10 +146,14 @@ app.post("/api/menu", (req, res) => {
 
   let finalImage = image;
   if (!image || !image.trim()) {
-    if (category === "Coffee") finalImage = "https://images.unsplash.com/photo-151097252790b-af4f42d87362?auto=format&fit=crop&w=600&q=80";
-    else if (category === "Tea") finalImage = "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?auto=format&fit=crop&w=600&q=80";
-    else if (category === "Snacks") finalImage = "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80";
-    else if (category === "Desserts") finalImage = "https://images.unsplash.com/photo-1587314168485-3236d6710814?auto=format&fit=crop&w=600&q=80";
+    if (category === "Noodles") finalImage = "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Rice") finalImage = "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Manchurian & Starters") finalImage = "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Egg Specials") finalImage = "https://images.unsplash.com/photo-1510693206972-df098062cb71?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Biryani") finalImage = "https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Hot Beverages") finalImage = "https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Cool Drinks") finalImage = "https://images.unsplash.com/photo-1581636625402-29b2a704ef13?auto=format&fit=crop&w=600&q=80";
+    else if (category === "Water Bottles") finalImage = "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80";
     else finalImage = "https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=600&q=80";
   }
 

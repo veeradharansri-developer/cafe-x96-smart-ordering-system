@@ -4,26 +4,31 @@ import { playOrderChime, playHelpAlert } from "../utils/sound";
 import { API_BASE } from "../utils/config";
 import { getLocalOrders, updateLocalOrderStatus, calcLocalAnalytics } from "../utils/localOrderStore";
 import QRCode from "qrcode";
+import StaffSidebar from "../components/StaffSidebar";
 import { 
   DollarSign, ShoppingBag, Clock, Users, ArrowRight,
   AlertTriangle, CheckCircle, Smartphone, HelpCircle, X, Download,
-  Plus, Edit2, Trash2, Leaf, Heart, Star, Sparkles
+  Plus, Edit2, Trash2, Leaf, Heart, Star, Sparkles, Search,
+  Bell, Filter, ChevronRight
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const { socket } = useSocket();
-  const [activeTab, setActiveTab] = useState("orders"); // "orders" or "menu-editor"
-  
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("tab") || "dashboard";
+  });
+
   // Real-time State Lists
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState(() => {
+    const localOrders = getLocalOrders();
+    return localOrders.length > 0 ? localOrders : [];
+  });
   const [menu, setMenu] = useState([]);
   const [helpRequests, setHelpRequests] = useState({});
-  const [analytics, setAnalytics] = useState({
-    totalOrdersToday: 0,
-    revenueToday: 0,
-    pendingOrdersCount: 0,
-    activeTablesCount: 0,
-    popularItems: []
+  const [analytics, setAnalytics] = useState(() => {
+    const localOrders = getLocalOrders();
+    return calcLocalAnalytics(localOrders.length > 0 ? localOrders : []);
   });
 
   // UI state controllers
@@ -63,7 +68,7 @@ export default function AdminDashboard() {
 
   const refreshFromLocal = useCallback(() => {
     setOrders((prev) => {
-      const merged = mergeLocalOrders(prev.filter((o) => !o.id.startsWith("ord-local-")));
+      mergeLocalOrders(prev.filter((o) => !o.id.startsWith("ord-local-")));
       const local = getLocalOrders();
       // Update status of any local orders that changed
       const updatedPrev = prev.map((o) => {
@@ -81,12 +86,7 @@ export default function AdminDashboard() {
 
   // Initialize Dashboard state from APIs + local store
   useEffect(() => {
-    // Load local orders immediately (works offline)
-    const localOrders = getLocalOrders();
-    if (localOrders.length > 0) {
-      setOrders(localOrders);
-      setAnalytics(calcLocalAnalytics(localOrders));
-    }
+
 
     // Try to also load from backend API
     fetch(`${API_BASE}/api/admin/init`)
@@ -216,8 +216,8 @@ export default function AdminDashboard() {
         width: 300,
         margin: 2,
         color: {
-          dark: "#2c1d11", // Coffee dark
-          light: "#fdfaf6" // Cream light
+          dark: "#1e293b", // Slate dark
+          light: "#f8fafc" // Cloud light
         }
       });
       setQrModal({ isOpen: true, table: tableNum, qrUrl: qrDataUrl });
@@ -241,7 +241,7 @@ export default function AdminDashboard() {
     } else {
       setEditorModal({ isOpen: true, item: null });
       setFormName("");
-      setFormCategory("Coffee");
+      setFormCategory("Noodles");
       setFormPrice("");
       setFormDescription("");
       setFormImage("");
@@ -371,222 +371,235 @@ export default function AdminDashboard() {
   // Helper to filter menu editor grid
   const filteredMenuItems = menu.filter((item) => {
     const matchesCategory = selectedCategoryFilter === "All" || item.category === selectedCategoryFilter;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
   const categories = ["All", "Noodles", "Rice", "Manchurian & Starters", "Egg Specials", "Biryani", "Hot Beverages", "Cool Drinks", "Water Bottles"];
 
+  const adminPalette = {
+    "--color-primary": "#42603A",
+    "--color-primary-hover": "#5A7A54",
+    "--color-primary-light": "#DCE6D3",
+    "--color-primary-container": "#E9F0E4",
+    "--color-secondary": "#7F9C72",
+    "--color-secondary-container": "#ECF2E7",
+    "--color-on-secondary-container": "#35482F",
+    "--color-accent": "#D4A259",
+    "--color-accent-warm": "#B78F3E",
+    "--color-accent-coral": "#CDA15A",
+    "--color-accent-gold": "#D4A259",
+    "--color-accent-amber": "#F4E0A3",
+    "--color-accent-rose": "#F4E5C8",
+    "--color-background": "#FDF8ED",
+    "--color-on-background": "#2C2A24",
+    "--color-surface": "#ffffff",
+    "--color-on-surface": "#2C2A24",
+    "--color-surface-variant": "#F5EFE2",
+    "--color-on-surface-variant": "#645B52",
+    "--color-surface-container-lowest": "#FBF4E6",
+    "--color-surface-container-low": "#F2E8D6",
+    "--color-surface-container": "#FDF8ED",
+    "--color-surface-container-high": "#F7EFE0",
+    "--color-surface-container-highest": "#E9E0D0",
+    "--color-outline": "rgba(132,103,61,0.18)",
+    "--color-outline-variant": "rgba(132,103,61,0.1)",
+    "--color-border": "rgba(132,103,61,0.18)"
+  };
+
   return (
-    <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
-      {/* Toast Alert layout container */}
-      <div className="fixed top-6 right-6 z-50 space-y-3 pointer-events-none">
-        {toasts.map((toast) => (
-          <div
-            key={toast.id}
-            className={`p-4 rounded-xl border shadow-xl flex items-center gap-3 w-80 text-xs font-semibold animate-in slide-in-from-right duration-300 pointer-events-auto ${
-              toast.type === "help"
-                ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
-                : toast.type === "order"
-                ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
-                : toast.type === "success"
-                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                : "bg-blue-500/10 border-blue-500/30 text-blue-400"
-            }`}
-          >
-            {toast.type === "help" ? <AlertTriangle size={18} className="animate-pulse" /> : <CheckCircle size={18} />}
-            <span>{toast.message}</span>
-          </div>
-        ))}
-      </div>
+    <div className="flex-1 flex min-h-screen bg-background text-on-background" style={adminPalette}>
+      {/* Left Sidebar Navigation */}
+      <StaffSidebar activeItem={activeTab === "menu-editor" ? "menu" : activeTab} setActiveTab={setActiveTab} />
 
-      {/* Header and Title */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-display font-extrabold text-3xl gold-gradient-text">
-            Reception Dashboard
-          </h1>
-          <p className="text-sm text-cream/50">Manage tables, live menus, and customer requests in real-time.</p>
-        </div>
-
-        {/* Tab Routing and Notification banner */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
-            <button
-              onClick={() => setActiveTab("orders")}
-              className={`px-4 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                activeTab === "orders" ? "bg-gold text-coffee-dark shadow-md" : "text-cream/60 hover:text-gold"
+      {/* Main Content Area */}
+      <div className="flex-grow p-8 min-w-0 flex flex-col h-screen overflow-y-auto">
+        {/* Toast Alert layout container */}
+        <div className="fixed top-6 right-6 z-50 space-y-3 pointer-events-none">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`p-4 rounded-2xl border shadow-lg flex items-center gap-3 w-80 text-xs font-semibold animate-in slide-in-from-right duration-300 pointer-events-auto bg-white ${
+                toast.type === "help"
+                  ? "border-error/30 text-error shadow-error/10"
+                  : toast.type === "order"
+                  ? "border-amber-200 text-amber-700 shadow-amber-100"
+                  : toast.type === "success"
+                  ? "border-emerald-500/30 text-emerald-600 shadow-emerald-100"
+                  : "border-accent-gold/40 text-accent-gold shadow-amber-100"
               }`}
             >
-              Live Orders Feed
-            </button>
-            <button
-              onClick={() => setActiveTab("menu-editor")}
-              className={`px-4 py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                activeTab === "menu-editor" ? "bg-gold text-coffee-dark shadow-md" : "text-cream/60 hover:text-gold"
-              }`}
-            >
-              Menu Editor
-            </button>
-          </div>
-
-          {Object.keys(helpRequests).length > 0 && (
-            <span className="animate-pulse px-3.5 py-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-xs font-bold flex items-center gap-1.5">
-              <AlertTriangle size={14} /> {Object.keys(helpRequests).length} Table Calls Active!
-            </span>
-          )}
+              {toast.type === "help" ? <AlertTriangle size={18} className="animate-pulse" /> : <CheckCircle size={18} />}
+              <span>{toast.message}</span>
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* VIEW: LIVE ORDERS FEED */}
-      {activeTab === "orders" && (
-        <>
-          {/* Analytics Counter Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {[
-              { label: "Today's Revenue", value: `$${analytics.revenueToday.toFixed(2)}`, icon: DollarSign, color: "text-emerald-400 bg-emerald-500/10" },
-              { label: "Orders Placed", value: analytics.totalOrdersToday, icon: ShoppingBag, color: "text-gold bg-gold/10" },
-              { label: "Pending Preparation", value: analytics.pendingOrdersCount, icon: Clock, color: "text-blue-400 bg-blue-500/10" },
-              { label: "Active Tables", value: analytics.activeTablesCount, icon: Users, color: "text-amber-400 bg-amber-500/10" }
-            ].map((card, idx) => {
-              const Icon = card.icon;
-              return (
-                <div key={idx} className="glass-panel p-5 rounded-2xl flex items-center justify-between border border-gold/10 animate-in fade-in duration-300">
-                  <div>
-                    <p className="text-xs text-cream/50 mb-1">{card.label}</p>
-                    <h3 className="font-display font-bold text-2xl font-mono text-cream">{card.value}</h3>
-                  </div>
-                  <div className={`p-3.5 rounded-xl ${card.color}`}>
-                    <Icon size={20} />
-                  </div>
-                </div>
-              );
-            })}
+        {/* Top Header Bar */}
+        <div className="flex justify-between items-center pb-4 mb-6 border-b border-border">
+          <div className="relative w-80">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-outline" />
+            <input
+              type="text"
+              placeholder="Search orders, tables, or customers..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-full text-xs bg-white border border-border focus:border-accent-gold focus:outline-none transition-all custom-shadow text-on-background"
+            />
           </div>
 
-          {/* Live Order Columns */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            {[
-              { title: "Pending Queue", status: "Pending", color: "border-t-amber-500 bg-amber-500/5" },
-              { title: "Preparing / Cooking", status: "Preparing", color: "border-t-blue-500 bg-blue-500/5" },
-              { title: "Ready to Serve", status: "Ready", color: "border-t-emerald-500 bg-emerald-500/5" },
-              { title: "Served History", status: "Served", color: "border-t-neutral-600 bg-neutral-600/5" }
-            ].map((col, idx) => {
-              const colOrders = getOrdersByStatus(col.status);
-              return (
-                <div key={idx} className={`glass-panel border-t-2 rounded-2xl p-4 flex flex-col h-[550px] overflow-hidden ${col.color} animate-in fade-in duration-300`}>
-                  <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
-                    <h3 className="font-display font-semibold text-sm text-cream">{col.title}</h3>
-                    <span className="font-mono text-xs px-2.5 py-0.5 rounded-full bg-white/5 text-cream/60">
-                      {colOrders.length}
-                    </span>
-                  </div>
+          <div className="flex items-center gap-3">
+            {Object.keys(helpRequests).length > 0 && (
+              <span className="animate-pulse px-3 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold flex items-center gap-1.5">
+                <AlertTriangle size={12} /> {Object.keys(helpRequests).length} Assistance
+              </span>
+            )}
+            
+            <button className="relative p-2 rounded-full hover:bg-surface-variant transition-colors cursor-pointer">
+              <Bell size={18} className="text-secondary" />
+              {orders.filter(o => o.status === 'Pending').length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-white text-[8px] font-bold flex items-center justify-center">
+                  {orders.filter(o => o.status === 'Pending').length}
+                </span>
+              )}
+            </button>
 
-                  {/* Order Cards */}
-                  <div className="flex-1 overflow-y-auto space-y-3.5 pr-1">
-                    {colOrders.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center text-cream/20 py-12">
-                        <CheckCircle size={32} />
-                        <p className="text-[11px] mt-2">No orders in this state</p>
+            <div className="flex items-center gap-1.5 text-success font-bold text-[11px] tracking-wide uppercase">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              Live Status
+            </div>
+          </div>
+        </div>
+
+        {/* VIEW: DASHBOARD (Overview) */}
+        {activeTab === "dashboard" && (
+          <>
+            <div className="mb-6">
+              <h2 className="font-display font-medium text-[26px] text-on-background mb-0.5">Operations Overview</h2>
+              <p className="text-xs text-secondary">Monitoring real-time performance of Café X96.</p>
+            </div>
+
+            {/* Stats Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+              {[
+                { label: "TOTAL REVENUE", value: `₹${analytics.revenueToday.toFixed(2)}`, icon: DollarSign, iconBg: "bg-surface-variant", badge: "+12.5%", badgeColor: "text-success" },
+                { label: "ACTIVE ORDERS", value: orders.filter(o => o.status !== "Served").length, icon: ShoppingBag, iconBg: "bg-surface-variant", badge: "Live", badgeColor: "text-secondary" },
+                { label: "AVG. PREP TIME", value: "12.4m", icon: Clock, iconBg: "bg-surface-variant", badge: "-2 min", badgeColor: "text-amber-700" },
+                { label: "TABLE OCCUPANCY", value: `${(analytics.activeTablesCount / 10 * 100).toFixed(0)}%`, icon: Users, iconBg: "bg-surface-variant", badge: `${(analytics.activeTablesCount / 10 * 100).toFixed(0)}%`, bar: true }
+              ].map((card, idx) => {
+                const Icon = card.icon;
+                return (
+                  <div key={idx} className="bg-white p-5 rounded-card border border-border flex flex-col justify-between h-32 custom-shadow">
+                    <div className="flex justify-between items-start">
+                      <div className={`p-2.5 rounded-xl ${card.iconBg}`}>
+                        <Icon size={18} className="text-on-background" />
                       </div>
-                    ) : (
-                      colOrders.map((order) => (
-                        <div 
-                          key={order.id} 
-                          className="glass-panel p-4 rounded-xl border border-white/5 shadow-md flex flex-col gap-2.5 transition-all hover:border-gold/25"
-                        >
-                          <div className="flex items-center justify-between text-xs font-bold">
-                            <span className="text-gold font-mono">{order.id}</span>
-                            <span className="px-2 py-0.5 rounded bg-gold/15 text-gold-light border border-gold/30">
-                              Table {order.tableNumber}
-                            </span>
-                          </div>
-                          
-                          <div className="text-xs text-cream/70 text-left">
-                            <p className="font-semibold text-cream">Name: {order.customerName}</p>
-                            <div className="mt-2 space-y-1 pl-1">
-                              {order.items.map((item, i) => (
-                                <p key={i} className="text-cream/50 text-[11px]">
-                                  - {item.name} <span className="text-gold font-mono">x{item.quantity}</span>
-                                </p>
-                              ))}
-                            </div>
-                            {order.notes && (
-                              <div className="mt-2 p-1.5 rounded bg-rose-500/5 border border-rose-500/10 text-rose-300 text-[10px]">
-                                Note: {order.notes}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-                            <span className="font-mono font-bold text-xs text-cream-dark">${order.total.toFixed(2)}</span>
-                            {col.status !== "Served" && (
-                              <button
-                                onClick={() => updateStatus(order.id, order.status)}
-                                className="p-1.5 rounded bg-gold hover:bg-gold-dark text-coffee-dark font-semibold text-xs flex items-center gap-1 transition-all duration-200 cursor-pointer"
-                                title="Move to next stage"
-                              >
-                                <span>
-                                  {col.status === "Pending" ? "Cook" :
-                                   col.status === "Preparing" ? "Ready" : "Serve"}
-                                </span>
-                                <ArrowRight size={12} />
-                              </button>
-                            )}
-                          </div>
+                      {card.bar ? null : (
+                        <span className={`text-[11px] font-semibold ${card.badgeColor}`}>
+                          {card.badge}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div>
+                      <p className="text-[10px] text-outline font-bold tracking-wider uppercase mb-0.5">{card.label}</p>
+                      <h3 className="font-display font-bold text-2xl text-on-background">{card.value}</h3>
+                      {card.bar && (
+                        <div className="w-full h-1.5 bg-surface-variant rounded-full overflow-hidden mt-2">
+                          <div className="h-full bg-accent-gold rounded-full transition-all duration-700" style={{ width: card.badge }} />
                         </div>
-                      ))
-                    )}
+                      )}
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+
+            {/* Live Orders Kanban Columns inside Dashboard */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-display font-semibold text-base text-on-background">Live Orders Board</h3>
+                <div className="flex items-center gap-2">
+                  <button className="px-4 py-2 rounded-full border border-border text-xs font-semibold text-secondary hover:border-accent-gold/30 hover:text-accent-gold transition-all cursor-pointer bg-white">
+                    <span className="flex items-center gap-1.5"><Filter size={12} /> Filter</span>
+                  </button>
+                  <button className="px-4 py-2 rounded-full bg-coffee text-white text-xs font-bold hover:bg-primary transition-all cursor-pointer">
+                    New Manual Order
+                  </button>
                 </div>
-              );
-            })}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Table Assistance Monitor */}
-            <div className="glass-panel p-6 rounded-3xl border border-gold/10 animate-in fade-in duration-300">
-              <h3 className="font-display font-bold text-lg text-gold mb-4 flex items-center gap-2">
-                Table Assistance & Session QR Codes
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
-                {Array.from({ length: 10 }).map((_, idx) => {
-                  const tableNum = String(idx + 1);
-                  const isAssistanceNeeded = !!helpRequests[tableNum];
-                  const hasActiveOrder = orders.some(o => o.tableNumber === tableNum && o.status !== "Served");
-
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {[
+                  { title: "Pending", status: "Pending", dotColor: "bg-accent" },
+                  { title: "Preparing", status: "Preparing", dotColor: "bg-primary" },
+                  { title: "Ready", status: "Ready", dotColor: "bg-primary" },
+                  { title: "Served", status: "Served", dotColor: "bg-neutral-400" }
+                ].map((col, idx) => {
+                  const colOrders = getOrdersByStatus(col.status);
                   return (
-                    <div
-                      key={tableNum}
-                      className={`p-3.5 rounded-2xl border text-center flex flex-col justify-between items-center transition-all ${
-                        isAssistanceNeeded
-                          ? "bg-rose-500/20 border-rose-500 animate-pulse text-rose-200 shadow-lg shadow-rose-500/10"
-                          : hasActiveOrder
-                          ? "bg-gold/5 border-gold/40 text-gold-light"
-                          : "bg-white/5 border-white/10 text-cream/70"
-                      }`}
-                    >
-                      <div className="mb-2">
-                        <p className="text-xs font-bold uppercase tracking-wider">Table</p>
-                        <p className="font-display font-extrabold text-xl">{tableNum}</p>
+                    <div key={idx} className="bg-white rounded-card p-4 flex flex-col h-[480px] overflow-hidden border border-border custom-shadow">
+                      <div className="flex items-center gap-2 pb-3 mb-3 border-b border-border">
+                        <span className={`w-2 h-2 rounded-full ${col.dotColor}`} />
+                        <h4 className="font-semibold text-xs text-on-background">{col.title} ({colOrders.length})</h4>
                       </div>
 
-                      <div className="space-y-1.5 w-full">
-                        {isAssistanceNeeded ? (
-                          <button
-                            onClick={() => handleResolveHelp(tableNum)}
-                            className="w-full py-1.5 rounded-lg bg-rose-500 hover:bg-rose-600 text-cream font-bold text-[10px] transition-colors cursor-pointer"
-                          >
-                            Help Call
-                          </button>
+                      <div className="flex-grow overflow-y-auto space-y-3 pr-0.5">
+                        {colOrders.length === 0 ? (
+                          <div className="h-full flex flex-col items-center justify-center text-center text-secondary/30 py-16">
+                            <CheckCircle size={24} className="opacity-30" />
+                            <p className="text-[10px] font-medium mt-1">Empty</p>
+                          </div>
                         ) : (
-                          <button
-                            onClick={() => openQrModal(tableNum)}
-                            className="w-full py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-cream text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer"
-                          >
-                            <Smartphone size={10} /> QR Code
-                          </button>
+                          colOrders.map((order) => (
+                            <div 
+                              key={order.id} 
+                              className={`p-3.5 rounded-input border border-border bg-white hover:border-primary/20 transition-all relative ${col.status === "Served" ? "opacity-60" : ""}`}
+                            >
+                              <div className="flex justify-between items-center text-[11px] font-bold mb-2">
+                                <span className="text-on-background">#{order.id.replace('ord-', '')}</span>
+                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                                  order.tableNumber 
+                                    ? 'bg-secondary-container/40 border-secondary-container text-on-secondary-container' 
+                                    : 'bg-surface-variant border-border text-secondary'
+                                }`}>
+                                  {order.tableNumber ? 'Dine-in' : 'Takeaway'}
+                                </span>
+                              </div>
+                              
+                              <div className="text-xs text-on-background text-left space-y-1">
+                                <p className="font-bold text-on-background">{order.customerName}, {order.items.map(i => i.name).join(', ')}</p>
+                                <p className="text-[10px] text-secondary">
+                                  {order.tableNumber ? `Table ${order.tableNumber}` : 'Pick-up counter'} · {new Date(order.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                                {order.notes && (
+                                  <div className="mt-1.5 p-1.5 rounded-lg bg-accent/40 border border-accent text-on-secondary-container text-[9px] font-medium leading-relaxed">
+                                    📝 {order.notes}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border">
+                                <span className="font-bold text-xs text-on-background">₹{order.total}</span>
+                                {col.status !== "Served" ? (
+                                  <button
+                                    onClick={() => updateStatus(order.id, order.status)}
+                                    className="p-1 text-secondary hover:text-accent-gold transition-colors cursor-pointer"
+                                  >
+                                    <ChevronRight size={16} />
+                                  </button>
+                                ) : (
+                                  <CheckCircle size={14} className="text-success" />
+                                )}
+                              </div>
+
+                              {col.status === "Ready" && (
+                                <button
+                                  onClick={() => updateStatus(order.id, order.status)}
+                                  className="w-full mt-2 py-2 rounded-full bg-secondary hover:bg-primary text-white font-bold text-[10px] transition-all cursor-pointer"
+                                >
+                                  Mark Served
+                                </button>
+                              )}
+                            </div>
+                          ))
                         )}
                       </div>
                     </div>
@@ -595,201 +608,389 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Dynamic SVG Analytics Chart */}
-            <div className="glass-panel p-6 rounded-3xl border border-gold/10 flex flex-col justify-between animate-in fade-in duration-300">
-              <div>
-                <h3 className="font-display font-bold text-lg text-gold mb-2">Popular Items Sold Today</h3>
-                <p className="text-xs text-cream/50 mb-6">Real-time metrics on top sales from live checkouts.</p>
-              </div>
+            {/* Table Monitor & SVG Analytics Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-2">
+              {/* Table Assistance Grid */}
+              <div className="bg-white p-6 rounded-card border border-border custom-shadow animate-in fade-in duration-300">
+                <h3 className="font-display font-semibold text-base text-on-background mb-4">
+                  Table Assistance & QR Codes
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {Array.from({ length: 10 }).map((_, idx) => {
+                    const tableNum = String(idx + 1);
+                    const isAssistanceNeeded = !!helpRequests[tableNum];
+                    const hasActiveOrder = orders.some(o => o.tableNumber === tableNum && o.status !== "Served");
 
-              <div className="flex-1 flex flex-col justify-center">
-                {analytics.popularItems.length === 0 ? (
-                  <div className="text-center py-12 text-cream/20">
-                    <HelpCircle size={36} className="mx-auto mb-2" />
-                    <p className="text-xs">No analytics data available yet</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {analytics.popularItems.map((item, idx) => {
-                      const maxCount = Math.max(...analytics.popularItems.map(i => i.count));
-                      const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
-                      
-                      return (
-                        <div key={idx} className="space-y-1.5">
-                          <div className="flex justify-between text-xs">
-                            <span className="font-medium text-cream-dark">{item.name}</span>
-                            <span className="font-bold text-gold font-mono">{item.count} sold</span>
-                          </div>
-                          <div className="h-2.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
-                            <div 
-                              className="h-full gold-gradient-bg rounded-full transition-all duration-700" 
-                              style={{ width: `${percentage}%` }}
-                            />
-                          </div>
+                    return (
+                      <div
+                        key={tableNum}
+                        className={`p-3 rounded-input border text-center flex flex-col justify-between items-center transition-all h-28 ${
+                          isAssistanceNeeded
+                            ? "bg-amber-50 border-amber-200 text-amber-700 animate-pulse shadow-sm"
+                            : hasActiveOrder
+                            ? "bg-secondary-container/30 border-secondary-container text-on-secondary-container"
+                            : "bg-white border-border text-secondary"
+                        }`}
+                      >
+                        <div>
+                          <p className="text-[9px] font-bold tracking-wider text-outline">TABLE</p>
+                          <p className="font-display font-bold text-lg leading-tight mt-0.5">{tableNum}</p>
                         </div>
-                      );
-                    })}
+
+                        <div className="w-full">
+                          {isAssistanceNeeded ? (
+                            <button
+                              onClick={() => handleResolveHelp(tableNum)}
+                              className="w-full py-1 rounded-full bg-amber-700 text-white font-bold text-[9px] cursor-pointer shadow-xs hover:bg-amber-800 transition-colors"
+                            >
+                              Resolve
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => openQrModal(tableNum)}
+                              className="w-full py-1.5 rounded-full bg-surface-variant hover:bg-accent text-on-surface text-[9px] font-semibold flex items-center justify-center gap-0.5 transition-all cursor-pointer border border-border"
+                            >
+                              <Smartphone size={8} /> QR Code
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Analytics Sold items */}
+              <div className="bg-white p-6 rounded-card border border-border custom-shadow flex flex-col justify-between animate-in fade-in duration-300">
+                <div>
+                  <h3 className="font-display font-semibold text-base text-on-background mb-1">Popular Items Sold</h3>
+                  <p className="text-xs text-secondary mb-4">Real-time metrics on top sales from live checkouts.</p>
+                </div>
+
+                <div className="flex-1 flex flex-col justify-center">
+                  {analytics.popularItems.length === 0 ? (
+                    <div className="text-center py-10 text-secondary/35">
+                      <HelpCircle size={32} className="mx-auto mb-2" />
+                      <p className="text-xs">No sales metrics recorded yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3.5">
+                      {analytics.popularItems.slice(0, 4).map((item, idx) => {
+                        const maxCount = Math.max(...analytics.popularItems.map(i => i.count));
+                        const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                        
+                        return (
+                          <div key={idx} className="space-y-1">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span className="text-on-background">{item.name}</span>
+                              <span className="text-coffee font-mono">{item.count} sold</span>
+                            </div>
+                            <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-accent-gold rounded-full transition-all duration-700" 
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* VIEW: LIVE ORDERS FEED COLUMN */}
+        {activeTab === "orders" && (
+          <div className="animate-in fade-in duration-300">
+            <div className="mb-6 flex justify-between items-center">
+              <div>
+                <h2 className="font-display font-medium text-[26px] text-on-background mb-0.5">Live Orders Board</h2>
+                <p className="text-xs text-secondary">View and manage active table checkouts.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button className="px-4 py-2 rounded-full border border-border text-xs font-semibold text-secondary hover:border-accent-gold/30 hover:text-accent-gold transition-all cursor-pointer bg-white">
+                  <span className="flex items-center gap-1.5"><Filter size={12} /> Filter</span>
+                </button>
+                <button className="px-4 py-2 rounded-full bg-coffee text-white text-xs font-bold hover:bg-primary transition-all cursor-pointer">
+                  New Manual Order
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[
+                { title: "Pending", status: "Pending", dotColor: "bg-accent" },
+                { title: "Preparing", status: "Preparing", dotColor: "bg-primary" },
+                { title: "Ready", status: "Ready", dotColor: "bg-primary" },
+                { title: "Served", status: "Served", dotColor: "bg-neutral-400" }
+              ].map((col, idx) => {
+                const colOrders = getOrdersByStatus(col.status);
+                return (
+                  <div key={idx} className="bg-white rounded-card p-4 flex flex-col h-[520px] overflow-hidden border border-border custom-shadow">
+                    <div className="flex items-center gap-2 pb-3 mb-3 border-b border-border">
+                      <span className={`w-2 h-2 rounded-full ${col.dotColor}`} />
+                      <h4 className="font-semibold text-xs text-on-background">{col.title} ({colOrders.length})</h4>
+                    </div>
+
+                    <div className="flex-grow overflow-y-auto space-y-3 pr-0.5">
+                      {colOrders.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-center text-secondary/30 py-16">
+                          <CheckCircle size={24} className="opacity-30" />
+                          <p className="text-[10px] font-medium mt-1">Empty</p>
+                        </div>
+                      ) : (
+                        colOrders.map((order) => (
+                          <div 
+                            key={order.id} 
+                            className={`p-3.5 rounded-input border border-border bg-white hover:border-primary/20 transition-all relative ${col.status === "Served" ? "opacity-60" : ""}`}
+                          >
+                            <div className="flex justify-between items-center text-[11px] font-bold mb-2">
+                              <span className="text-on-background">#{order.id.replace('ord-', '')}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                                order.tableNumber 
+                                  ? 'bg-secondary-container/40 border-secondary-container text-on-secondary-container' 
+                                  : 'bg-surface-variant border-border text-secondary'
+                              }`}>
+                                {order.tableNumber ? 'Dine-in' : 'Takeaway'}
+                              </span>
+                            </div>
+                            
+                            <div className="text-xs text-on-background text-left space-y-1">
+                              <p className="font-bold text-on-background">{order.customerName}, {order.items.map(i => i.name).join(', ')}</p>
+                              <p className="text-[10px] text-secondary">
+                                {order.tableNumber ? `Table ${order.tableNumber}` : 'Pick-up counter'} · {new Date(order.timestamp || Date.now()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              </p>
+                              {order.notes && (
+                                <div className="mt-1.5 p-1.5 rounded-lg bg-accent/40 border border-accent text-on-secondary-container text-[9px] font-medium leading-relaxed">
+                                  📝 {order.notes}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border">
+                              <span className="font-bold text-xs text-on-background">₹{order.total}</span>
+                              {col.status !== "Served" ? (
+                                <button
+                                  onClick={() => updateStatus(order.id, order.status)}
+                                  className="p-1 text-secondary hover:text-primary transition-colors cursor-pointer"
+                                >
+                                  <ChevronRight size={16} />
+                                </button>
+                              ) : (
+                                <CheckCircle size={14} className="text-success" />
+                              )}
+                            </div>
+
+                            {col.status === "Ready" && (
+                              <button
+                                onClick={() => updateStatus(order.id, order.status)}
+                                className="w-full mt-2 py-2 rounded-full bg-secondary hover:bg-primary text-white font-bold text-[10px] transition-all cursor-pointer"
+                              >
+                                Mark Served
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
-                )}
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* VIEW: DETAILED ANALYTICS */}
+        {activeTab === "analytics" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div>
+              <h2 className="font-display font-medium text-[26px] text-on-background mb-0.5">Performance &amp; Analytics</h2>
+              <p className="text-xs text-secondary">Historical charts and summary insights.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white p-6 rounded-card border border-border custom-shadow">
+                <h3 className="font-display font-semibold text-base text-on-background mb-4">Live Activity Metrics</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-surface-variant/20 text-xs">
+                    <span className="text-secondary font-medium">Completed Receipts</span>
+                    <span className="font-bold text-on-background">{orders.filter(o => o.status === "Served").length} orders</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-surface-variant/20 text-xs">
+                    <span className="text-secondary font-medium">Pending Assistance Calls</span>
+                    <span className="font-bold text-amber-700">{Object.keys(helpRequests).length} active</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-surface-variant/20 text-xs">
+                    <span className="text-secondary font-medium">Average Order Size</span>
+                    <span className="font-bold text-on-background">
+                      ₹{orders.length ? (analytics.revenueToday / orders.length).toFixed(2) : "0.00"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-card border border-border custom-shadow flex flex-col justify-between">
+                <div>
+                  <h3 className="font-display font-semibold text-base text-on-background mb-2">Item Sales Count</h3>
+                </div>
+                <div className="flex-grow space-y-3.5 mt-2">
+                  {analytics.popularItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-xs border-b border-surface-variant/25 pb-2">
+                      <span className="font-medium text-on-background">{item.name}</span>
+                      <span className="font-bold text-primary font-mono">{item.count} items sold</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </>
-      )}
+        )}
 
-      {/* VIEW: MENU EDITOR */}
-      {activeTab === "menu-editor" && (
-        <section className="space-y-6 animate-in fade-in duration-300">
-          
-          {/* Header controllers */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 glass-panel rounded-2xl border border-gold/10">
-            {/* Search inputs */}
-            <div className="relative w-full sm:w-80">
-              <input
-                type="text"
-                placeholder="Search menu items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 hover:border-gold/20 focus:border-gold/40 rounded-xl px-4 py-2.5 text-xs focus:outline-none transition-all"
-              />
-            </div>
-            
-            {/* Action buttons */}
-            <button
-              onClick={() => handleOpenEditor(null)}
-              className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-6 py-2.5 rounded-xl bg-gold hover:bg-gold-dark text-coffee-dark font-display font-bold text-xs transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg shadow-gold/10 cursor-pointer"
-            >
-              <Plus size={16} /> Add New Menu Item
-            </button>
-          </div>
-
-          {/* Category Pills */}
-          <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
-            {categories.map((cat) => (
+        {/* VIEW: MENU EDITOR */}
+        {activeTab === "menu" && (
+          <section className="space-y-6 animate-in fade-in duration-300">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-card border border-border custom-shadow">
+              <div className="relative w-full sm:w-80">
+                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-outline" />
+                <input
+                  type="text"
+                  placeholder="Search menu items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white border border-border focus:border-accent-gold focus:outline-none rounded-input pl-10 pr-4 py-2.5 text-xs text-on-background custom-shadow"
+                />
+              </div>
+              
               <button
-                key={cat}
-                onClick={() => setSelectedCategoryFilter(cat)}
-                className={`px-4.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer ${
-                  selectedCategoryFilter === cat
-                    ? "bg-gold text-coffee-dark font-bold"
-                    : "bg-white/5 border border-white/10 text-cream/70 hover:border-gold/25 hover:text-gold"
-                }`}
+                onClick={() => handleOpenEditor(null)}
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-6 py-3 rounded-full bg-coffee hover:bg-primary text-white font-display font-bold text-xs transition-all duration-200 cursor-pointer shadow-sm"
               >
-                {cat}
+                <Plus size={16} /> Add New Menu Item
               </button>
-            ))}
-          </div>
+            </div>
 
-          {/* Grid list of editable items */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMenuItems.map((item) => (
-              <div 
-                key={item.id}
-                className="glass-panel p-4 rounded-3xl border border-white/5 flex flex-col justify-between h-[340px] relative overflow-hidden transition-all hover:border-gold/20 shadow-lg"
-              >
-                <div>
-                  {/* Image banner */}
-                  <div className="h-28 w-full rounded-2xl overflow-hidden bg-neutral-900 border border-white/10 relative mb-3.5">
-                    <img src={item.image} alt={item.name} className={`w-full h-full object-cover transition-opacity ${item.isOutOfStock ? "opacity-45" : ""}`} />
-                    
-                    {/* Category overlay */}
-                    <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded bg-black/85 border border-gold/20 text-[9px] font-bold text-gold uppercase font-display tracking-wider">
-                      {item.category}
-                    </span>
+            {/* Category Filter Pills */}
+            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategoryFilter(cat)}
+                  className={`px-4.5 py-2.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer border ${
+                    selectedCategoryFilter === cat
+                      ? "bg-secondary-container border-transparent text-on-secondary-container font-bold active-tab shadow-xs"
+                      : "bg-white border-border text-secondary hover:border-accent-gold/30 hover:text-accent-gold custom-shadow"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
 
-                    {/* Veg indicator overlay */}
-                    <span className={`absolute top-2.5 right-2.5 w-4 h-4 border bg-black/75 rounded flex items-center justify-center ${
-                      item.isVeg ? "border-emerald-500" : "border-red-500"
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        item.isVeg ? "bg-emerald-500" : "bg-red-500"
-                      }`} />
-                    </span>
+            {/* Grid list of editable items */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredMenuItems.map((item) => (
+                <div 
+                  key={item.id}
+                  className="bg-white p-4 rounded-card border border-border flex flex-col justify-between h-[340px] relative overflow-hidden transition-all hover:border-primary/20 shadow-sm hover:shadow-md"
+                >
+                  <div>
+                    {/* Image banner */}
+                    <div className="h-28 w-full rounded-card overflow-hidden bg-neutral-900 border border-border relative mb-3.5">
+                      <img src={item.image} alt={item.name} className={`w-full h-full object-cover transition-opacity ${item.isOutOfStock ? "opacity-45" : ""}`} />
+                      
+                      <span className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded bg-black/85 border border-accent-amber/20 text-[9px] font-bold text-white uppercase font-display tracking-wider">
+                        {item.category}
+                      </span>
 
-                    {/* Out of Stock overlay text */}
-                    {item.isOutOfStock && (
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <span className="bg-rose-600/90 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
-                          Out of Stock
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                      <span className={`absolute top-2.5 right-2.5 w-4 h-4 border bg-white rounded flex items-center justify-center ${
+                        item.isVeg ? "border-emerald-500" : "border-red-500"
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          item.isVeg ? "bg-emerald-500" : "bg-red-500"
+                        }`} />
+                      </span>
 
-                  {/* Info details */}
-                  <div className="space-y-1 text-left">
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <h4 className="font-display font-bold text-sm text-cream truncate">{item.name}</h4>
-                      {item.isPopular && (
-                        <span className="text-[8px] bg-gold/10 text-gold border border-gold/30 px-1 rounded font-bold uppercase flex items-center gap-0.5">
-                          <Sparkles size={8} /> Popular
-                        </span>
+                      {item.isOutOfStock && (
+                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                          <span className="bg-amber-700/90 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
+                            Out of Stock
+                          </span>
+                        </div>
                       )}
                     </div>
 
-                    <p className="text-[11px] text-cream/50 line-clamp-2 leading-relaxed h-8 mb-2">
-                      {item.description || "No description provided."}
-                    </p>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-gold text-sm">${item.price.toFixed(2)}</span>
-                        <span className="text-[10px] text-cream/40 flex items-center gap-0.5">
-                          <Star size={10} className="text-gold fill-gold" /> {item.rating.toFixed(1)}
-                        </span>
+                    {/* Info details */}
+                    <div className="space-y-1 text-left">
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <h4 className="font-display font-bold text-sm text-on-background truncate">{item.name}</h4>
+                        {item.isPopular && (
+                          <span className="text-[8px] bg-accent-amber/20 text-accent-gold border border-accent-amber/20 px-1 rounded font-bold uppercase flex items-center gap-0.5">
+                            <Sparkles size={8} /> Popular
+                          </span>
+                        )}
                       </div>
-                      <button
-                        onClick={() => handleToggleStock(item)}
-                        className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all cursor-pointer uppercase ${
-                          item.isOutOfStock
-                            ? "bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20"
-                            : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20"
-                        }`}
-                      >
-                        {item.isOutOfStock ? "Sold Out" : "In Stock"}
-                      </button>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-coffee text-sm">₹{item.price.toFixed(0)}</span>
+                          <span className="text-[10px] text-secondary flex items-center gap-0.5">
+                            <Star size={10} className="text-accent fill-accent" /> {item.rating.toFixed(1)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleToggleStock(item)}
+                          className={`px-2 py-0.5 rounded-full text-[9px] font-bold border transition-all cursor-pointer uppercase ${
+                            item.isOutOfStock
+                              ? "bg-amber-100 border-amber-300 text-amber-700"
+                              : "bg-emerald-100 border-emerald-300 text-emerald-600"
+                          }`}
+                        >
+                          {item.isOutOfStock ? "Sold Out" : "In Stock"}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Edit and Delete Buttons footer */}
-                <div className="pt-3.5 border-t border-white/5 flex gap-2">
-                  <button
-                    onClick={() => handleOpenEditor(item)}
-                    className="flex-1 py-2 rounded-xl border border-gold/30 hover:bg-gold hover:text-coffee-dark text-gold font-display font-semibold text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
-                  >
-                    <Edit2 size={12} /> Edit Item
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMenuItem(item.id, item.name)}
-                    className="px-3.5 py-2 rounded-xl border border-rose-500/20 hover:border-rose-500 hover:bg-rose-500/10 text-rose-400 font-display font-semibold text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
-                  >
-                    <Trash2 size={12} />
-                  </button>
+                  {/* Edit and Delete Buttons */}
+                  <div className="pt-3.5 border-t border-border/60 flex gap-2">
+                    <button
+                      onClick={() => handleOpenEditor(item)}
+                      className="flex-1 py-2.5 rounded-full border border-primary/30 hover:bg-primary hover:text-white text-primary font-display font-semibold text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    >
+                      <Edit2 size={12} /> Edit Item
+                    </button>
+                    <button
+                      onClick={() => handleDeleteMenuItem(item.id, item.name)}
+                      className="px-3.5 py-2.5 rounded-full border border-amber-300 hover:bg-amber-700 hover:text-white text-amber-700 font-display font-semibold text-[11px] flex items-center justify-center gap-1 transition-all cursor-pointer"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-
-        </section>
-      )}
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
 
       {/* MODAL: QR CODE GENERATOR */}
       {qrModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-sm rounded-3xl glass-panel p-6 border border-gold/30 shadow-2xl relative animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-sm rounded-card bg-white p-6 border border-border shadow-2xl relative animate-in zoom-in-95 duration-300">
             <button
               onClick={() => setQrModal({ isOpen: false, table: null, qrUrl: "" })}
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-white/5 text-cream/50 hover:text-cream transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-surface-variant text-secondary hover:text-accent-gold transition-colors cursor-pointer"
             >
               <X size={20} />
             </button>
 
             <div className="text-center">
-              <h4 className="font-display font-extrabold text-xl gold-gradient-text mb-1">Table {qrModal.table} QR Code</h4>
-              <p className="text-xs text-cream/50 mb-6">Scan to launch the Table {qrModal.table} mobile menu.</p>
+              <h4 className="font-display font-bold text-xl text-coffee mb-1">Table {qrModal.table} QR Code</h4>
 
-              <div className="w-56 h-56 mx-auto rounded-2xl overflow-hidden border-2 border-gold/30 p-2 bg-cream flex items-center justify-center shadow-xl">
+              <div className="w-56 h-56 mx-auto rounded-card overflow-hidden border border-border p-3 bg-white flex items-center justify-center shadow-md">
                 {qrModal.qrUrl && (
                   <img
                     src={qrModal.qrUrl}
@@ -803,17 +1004,17 @@ export default function AdminDashboard() {
                 <a
                   href={qrModal.qrUrl}
                   download={`table-${qrModal.table}-qrcode.png`}
-                  className="w-full py-3 rounded-xl bg-gold hover:bg-gold-dark text-coffee-dark font-display font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  className="w-full py-3.5 rounded-full bg-secondary-container hover:bg-secondary-container/90 text-on-secondary-container font-display font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <Download size={14} /> Download QR Image
                 </a>
                 <a
-                  href={`/menu?table=${qrModal.qrUrl}`}
+                  href={`/menu?table=${qrModal.table}`}
                   onClick={(e) => {
                     e.preventDefault();
                     window.open(`${window.location.origin}/menu?table=${qrModal.table}`, "_blank");
                   }}
-                  className="w-full py-3 rounded-xl bg-white/5 border border-white/10 hover:border-gold/30 text-cream font-display font-medium text-xs flex items-center justify-center gap-1 transition-all"
+                  className="w-full py-3.5 rounded-full bg-white border border-border hover:border-accent-gold/30 text-secondary hover:text-accent-gold font-display font-medium text-xs flex items-center justify-center gap-1 transition-all"
                 >
                   Open Live Customer View <ArrowRight size={14} />
                 </a>
@@ -825,28 +1026,26 @@ export default function AdminDashboard() {
 
       {/* MODAL: ADD/EDIT MENU ITEM FORM */}
       {editorModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-md rounded-3xl glass-panel p-6 border border-gold/30 shadow-2xl relative animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-md rounded-card bg-white p-6 border border-border shadow-2xl relative animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setEditorModal({ isOpen: false, item: null })}
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-white/5 text-cream/50 hover:text-cream transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-surface-variant text-secondary hover:text-primary transition-colors cursor-pointer"
             >
               <X size={20} />
             </button>
 
-            <h4 className="font-display font-extrabold text-xl gold-gradient-text mb-2 text-left">
+            <h4 className="font-display font-bold text-xl text-primary mb-2 text-left">
               {editorModal.item ? `Edit Item: ${editorModal.item.name}` : "Add New Menu Item"}
             </h4>
-            <p className="text-[11px] text-cream/50 text-left mb-6 border-b border-gold/10 pb-2">
+            <p className="text-[11px] text-secondary text-left mb-6 border-b border-border pb-2">
               Provide the menu detail configuration below. Real-time updates emit automatically.
             </p>
 
             <form onSubmit={handleSaveMenuItem} className="space-y-4 text-left">
-              
-              {/* Form Input fields */}
               <div>
-                <label className="block text-[10px] text-cream/50 uppercase tracking-wider mb-1.5 font-bold">
-                  Item Name <span className="text-gold">*</span>
+                <label className="block text-[10px] text-secondary uppercase tracking-wider mb-1.5 font-bold">
+                  Item Name <span className="text-accent-gold">*</span>
                 </label>
                 <input
                   type="text"
@@ -854,19 +1053,19 @@ export default function AdminDashboard() {
                   placeholder="e.g. Lavender Cardamom Mocha"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 focus:border-gold/45 rounded-xl px-4 py-2.5 text-xs text-cream focus:outline-none transition-colors"
+                  className="w-full bg-white border border-border focus:border-primary rounded-input px-4 py-2.5 text-xs text-on-background focus:outline-none transition-colors"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] text-cream/50 uppercase tracking-wider mb-1.5 font-bold">
-                    Category <span className="text-gold">*</span>
+                  <label className="block text-[10px] text-secondary uppercase tracking-wider mb-1.5 font-bold">
+                    Category <span className="text-accent-gold">*</span>
                   </label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
-                    className="w-full bg-coffee-dark border border-white/10 focus:border-gold/45 rounded-xl px-3.5 py-2.5 text-xs text-cream focus:outline-none"
+                    className="w-full bg-white border border-border focus:border-accent-gold rounded-input px-3.5 py-2.5 text-xs text-on-background focus:outline-none"
                   >
                     <option value="Noodles">🍜 Noodles</option>
                     <option value="Rice">🍚 Rice</option>
@@ -880,8 +1079,8 @@ export default function AdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] text-cream/50 uppercase tracking-wider mb-1.5 font-bold">
-                    Price ($ USD) <span className="text-gold">*</span>
+                  <label className="block text-[10px] text-secondary uppercase tracking-wider mb-1.5 font-bold">
+                    Price (₹ INR) <span className="text-accent-gold">*</span>
                   </label>
                   <input
                     type="number"
@@ -890,26 +1089,14 @@ export default function AdminDashboard() {
                     placeholder="4.50"
                     value={formPrice}
                     onChange={(e) => setFormPrice(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 focus:border-gold/45 rounded-xl px-4 py-2.5 text-xs text-cream focus:outline-none transition-colors"
+                    className="w-full bg-white border border-border focus:border-primary rounded-input px-4 py-2.5 text-xs text-on-background focus:outline-none transition-colors"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] text-cream/50 uppercase tracking-wider mb-1.5 font-bold">
-                  Description
-                </label>
-                <textarea
-                  placeholder="Brief summary of ingredients, brewing details..."
-                  rows={2}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 focus:border-gold/45 rounded-xl px-4 py-2.5 text-xs text-cream focus:outline-none transition-colors resize-none"
-                />
-              </div>
 
               <div>
-                <label className="block text-[10px] text-cream/50 uppercase tracking-wider mb-1.5 font-bold">
+                <label className="block text-[10px] text-secondary uppercase tracking-wider mb-1.5 font-bold">
                   Photo URL (Optional)
                 </label>
                 <input
@@ -917,21 +1104,20 @@ export default function AdminDashboard() {
                   placeholder="https://images.unsplash.com/... (or blank for default)"
                   value={formImage}
                   onChange={(e) => setFormImage(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 focus:border-gold/45 rounded-xl px-4 py-2.5 text-xs text-cream focus:outline-none transition-colors"
+                  className="w-full bg-white border border-border focus:border-primary rounded-input px-4 py-2.5 text-xs text-on-background focus:outline-none transition-colors"
                 />
               </div>
 
-              {/* Toggles */}
-              <div className="flex items-center gap-6 pt-1">
+              <div className="flex flex-col gap-3.5 pt-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={formIsVeg}
                     onChange={(e) => setFormIsVeg(e.target.checked)}
-                    className="accent-gold w-4 h-4 rounded"
+                    className="accent-primary w-4 h-4 rounded"
                   />
-                  <span className="text-xs text-cream/80 flex items-center gap-1">
-                    <Leaf size={12} className="text-emerald-500" /> Vegetarian Item
+                  <span className="text-xs text-on-background flex items-center gap-1">
+                    <Leaf size={12} className="text-emerald-600" /> Vegetarian Item
                   </span>
                 </label>
 
@@ -940,10 +1126,10 @@ export default function AdminDashboard() {
                     type="checkbox"
                     checked={formIsPopular}
                     onChange={(e) => setFormIsPopular(e.target.checked)}
-                    className="accent-gold w-4 h-4 rounded"
+                    className="accent-primary w-4 h-4 rounded"
                   />
-                  <span className="text-xs text-cream/80 flex items-center gap-1">
-                    <Heart size={12} className="text-gold" /> Popular Special
+                  <span className="text-xs text-on-background flex items-center gap-1">
+                    <Heart size={12} className="text-accent-gold" /> Popular Special
                   </span>
                 </label>
 
@@ -952,31 +1138,29 @@ export default function AdminDashboard() {
                     type="checkbox"
                     checked={formIsOutOfStock}
                     onChange={(e) => setFormIsOutOfStock(e.target.checked)}
-                    className="accent-gold w-4 h-4 rounded"
+                    className="accent-primary w-4 h-4 rounded"
                   />
-                  <span className="text-xs text-cream/80 flex items-center gap-1 text-rose-400">
-                    <AlertTriangle size={12} className="text-rose-500" /> Out of Stock
+                  <span className="text-xs text-on-background flex items-center gap-1 text-amber-700">
+                    <AlertTriangle size={12} className="text-amber-600" /> Out of Stock
                   </span>
                 </label>
               </div>
 
-              {/* Action buttons */}
-              <div className="flex gap-3.5 pt-4 border-t border-gold/10 mt-6">
+              <div className="flex gap-3.5 pt-4 border-t border-border mt-6">
                 <button
                   type="button"
                   onClick={() => setEditorModal({ isOpen: false, item: null })}
-                  className="flex-1 py-3 rounded-xl border border-white/10 hover:bg-white/5 text-cream/60 hover:text-cream font-display font-medium text-xs transition-colors cursor-pointer"
+                  className="flex-1 py-3 rounded-full bg-surface-variant hover:bg-accent text-secondary hover:text-accent-gold font-display font-semibold text-xs transition-colors cursor-pointer border border-border"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-3 rounded-xl bg-gold hover:bg-gold-dark text-coffee-dark font-display font-bold text-xs transition-all cursor-pointer shadow-lg shadow-gold/10"
+                  className="flex-1 py-3 rounded-full bg-coffee hover:bg-primary text-white font-display font-bold text-xs transition-all cursor-pointer shadow-sm"
                 >
                   Save Item
                 </button>
               </div>
-
             </form>
           </div>
         </div>

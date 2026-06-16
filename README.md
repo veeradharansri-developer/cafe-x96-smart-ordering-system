@@ -74,3 +74,4 @@ Open multiple browser windows side-by-side to test the real-time websocket flows
 * `order_status_updated` - Emitted to `table:X` room when order shifts.
 * `help_requested` - Emitted to `admins` when table rings bell.
 * `help_resolved` - Emitted to `admins` when help is dismissed.
+

@@ -4,7 +4,7 @@ import { useSocket } from "../context/SocketContext";
 import { API_BASE } from "../utils/config";
 import { menuData as localMenuData } from "../data/menuData";
 import {
-  Search, Bell, ShoppingBag, X, Utensils, HelpCircle, Sparkles
+  Search, Bell, ShoppingBag, X, HelpCircle
 } from "lucide-react";
 import MenuCard from "../components/menu/MenuCard";
 import CategoryTabs, { CATEGORY_META } from "../components/menu/CategoryTabs";
@@ -34,6 +34,7 @@ export default function MenuPage() {
   const [menu, setMenu] = useState(localMenuData); // ← local data loads instantly
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeNav, setActiveNav] = useState("menu");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [helpSent, setHelpSent] = useState(false);
   const [loadingMenu] = useState(false); // no loading needed — data is already there
@@ -100,7 +101,6 @@ export default function MenuPage() {
     const q = searchQuery.toLowerCase();
     return (
       item.name.toLowerCase().includes(q) ||
-      (item.description || "").toLowerCase().includes(q) ||
       (item.category || "").toLowerCase().includes(q)
     );
   });
@@ -114,70 +114,95 @@ export default function MenuPage() {
 
   const totalItems = cartItems.reduce((a, c) => a + c.quantity, 0);
 
-  // Find cart item for a given display item
-  const getCartItem = (item) => {
-    // Try to find any variant of this item in cart
-    return cartItems.find((c) => c.id === item.id || c.baseId === item.id || c.id.startsWith(`${item.id}_`)) || null;
-  };
-
-  const getCartItemByKey = (key) => cartItems.find((c) => c.id === key) || null;
-
   return (
-    <div className="min-h-screen flex flex-col pb-28" style={{ background: "linear-gradient(160deg, #0c0804 0%, #080604 60%, #0a0804 100%)" }}>
+    <div className="min-h-screen flex flex-col pb-24 bg-background text-on-background">
 
       {/* ── Toast Container ─────────────────────────────────────────── */}
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      {/* ── Main Content ─────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 pt-4">
-
-        {/* Hero Banner */}
-        <section className="mb-5 relative rounded-2xl overflow-hidden p-5" style={{ background: "linear-gradient(135deg, #1a0e04 0%, #251409 60%, #1a0e04 100%)", border: "1px solid rgba(245,158,11,0.15)" }}>
-          <div className="absolute top-2 right-3 text-5xl opacity-10 select-none">🍽️</div>
-
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles size={12} className="text-amber-400" />
-            <span className="text-[10px] text-amber-400 font-black uppercase tracking-widest">Fresh &amp; Made to Order</span>
-          </div>
-          <h2
-            className="font-black text-2xl leading-tight mb-1 select-none"
-            style={{ background: "linear-gradient(135deg, #fbbf24 0%, #f97316 50%, #fbbf24 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
+      {/* ── Top Navigation Bar ──────────────────────────────────────── */}
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-lg border-b border-border px-5 py-3 flex justify-between items-center">
+        <h1 className="font-display font-bold text-lg text-primary">Café <span className="text-accent-warm">X96</span></h1>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleCallHelp}
+            disabled={helpSent}
+            title="Call Assistance"
+            className={`p-2.5 rounded-full transition-all duration-300 cursor-pointer ${
+              helpSent
+                ? "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                : "hover:bg-accent/40 text-accent-warm hover:text-accent-gold"
+            }`}
           >
-            Cafe x96<br />Smart Menu
-          </h2>
-          <p className="text-xs text-amber-100/40 max-w-xs leading-relaxed">
-            Noodles · Rice · Starters · Biryani · Beverages — freshly prepared &amp; served hot to your table.
-          </p>
+            <Bell size={18} className={helpSent ? "" : ""} />
+          </button>
+          <button
+            onClick={() => setIsCartOpen(true)}
+            className="relative p-2.5 rounded-full hover:bg-accent/40 text-coffee hover:text-primary transition-all cursor-pointer"
+          >
+            <ShoppingBag size={18} />
+            {totalItems > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full bg-accent-warm text-white text-[9px] font-black flex items-center justify-center badge-bounce shadow-sm">
+                {totalItems}
+              </span>
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* ── Main Content ─────────────────────────────────────────────── */}
+      <main className="flex-grow max-w-2xl mx-auto w-full px-margin-mobile pt-2">
+
+        <section className="hero-banner px-6 py-10 mb-4 select-none flex justify-center items-center">
+          <div className="hero-logo-card">
+            <div className="hero-logo-frame">
+              <img
+                src="/logo.png"
+                alt="Café X96 tea cup logo"
+                className="hero-logo-img"
+              />
+            </div>
+          </div>
         </section>
 
-        {/* Search Bar */}
-        <section className="mb-4 relative">
-          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
-            <Search size={15} className="text-amber-100/30" />
+        {/* Search Bar & Filter */}
+        <section className="mb-4">
+          <div className="glass-panel p-4 sm:p-5 rounded-[28px] border-border shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.35em] text-secondary mb-1">Find your flavor</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary" />
+                  <input
+                    ref={searchRef}
+                    type="text"
+                    placeholder="Search the menu..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-11 pr-12 py-3.5 rounded-full bg-white border border-border focus:border-primary focus:outline-none transition-all shadow-sm text-on-background"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-secondary hover:text-on-background transition-colors"
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
+                </div>
+                <button className="flex items-center justify-center px-4 py-3 rounded-full bg-accent-warm text-white font-semibold shadow-sm hover:shadow-md transition-all border border-transparent">
+                  <span className="material-symbols-outlined text-[20px] font-light">tune</span>
+                </button>
+              </div>
+            </div>
           </div>
-          <input
-            ref={searchRef}
-            type="text"
-            placeholder="Search noodles, biryani, chai..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-10 py-3 rounded-2xl text-sm text-amber-100 placeholder-amber-100/25 focus:outline-none transition-all duration-200"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(245,158,11,0.15)" }}
-            onFocus={(e) => (e.target.style.borderColor = "rgba(245,158,11,0.45)")}
-            onBlur={(e) => (e.target.style.borderColor = "rgba(245,158,11,0.15)")}
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery("")}
-              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-amber-100/30 hover:text-amber-300 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          )}
         </section>
 
         {/* Category Tabs */}
-        <section className="mb-5">
+        <section className="mb-4">
           <CategoryTabs
             categories={categories}
             selected={selectedCategory}
@@ -187,39 +212,38 @@ export default function MenuPage() {
 
         {/* Menu Sections */}
         {loadingMenu ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(245,158,11,0.06)" }} />
+              <div key={i} className="h-28 rounded-card animate-pulse bg-white border border-border" />
             ))}
           </div>
         ) : Object.keys(grouped).length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-amber-100/20">
+          <div className="flex flex-col items-center justify-center py-20 text-secondary">
             <HelpCircle size={48} className="mb-3 opacity-30" />
             <p className="text-sm font-semibold">No items found</p>
             <p className="text-xs mt-1">Try a different search or category</p>
           </div>
         ) : (
-          <div className="space-y-8 pb-4">
+          <div className="space-y-6 pb-6">
             {Object.entries(grouped).map(([category, items]) => {
               const meta = CATEGORY_META[category] || { emoji: "🍴" };
               return (
                 <section key={category} id={`cat-${category.replace(/\s/g, "-")}`}>
                   {/* Category Header */}
-                  <div className="flex items-center gap-2.5 mb-3 sticky top-[57px] py-2 z-30" style={{ background: "rgba(10,7,3,0.95)", backdropFilter: "blur(12px)" }}>
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg shadow-md" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+                  <div className="flex items-center gap-2.5 mb-3 sticky top-[57px] py-2.5 z-30 bg-background/95 backdrop-blur-md">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg shadow-sm bg-white border border-border">
                       {meta.emoji}
                     </div>
                     <div>
-                      <h3 className="font-black text-sm text-amber-100">{category}</h3>
-                      <p className="text-[10px] text-amber-100/30">{items.length} item{items.length !== 1 ? "s" : ""}</p>
+                      <h3 className="font-medium text-sm text-on-background">{category}</h3>
+                      <p className="text-[10px] text-secondary">{items.length} item{items.length !== 1 ? "s" : ""}</p>
                     </div>
-                    <div className="flex-1 h-px ml-2" style={{ background: "linear-gradient(to right, rgba(245,158,11,0.15), transparent)" }} />
+                    <div className="flex-1 h-px ml-2 bg-border" />
                   </div>
 
                   {/* Items Grid */}
                   <div className="space-y-3">
                     {items.map((item) => {
-                      // For variant items, pass the specific cart item (single or full)
                       const singleKey = `${item.id}_single`;
                       const fullKey = `${item.id}_full`;
                       const singleCartItem = cartItems.find((c) => c.id === singleKey) || null;
@@ -228,12 +252,12 @@ export default function MenuPage() {
 
                       return (
                         <MenuCard
-                          key={item.id}
-                          item={item}
-                          cartItem={singleOrOnlyCartItem}
-                          fullCartItem={fullCartItem}
-                          onAddToCart={handleAddToCart}
-                          onUpdateQuantity={updateQuantity}
+                           key={item.id}
+                           item={item}
+                           cartItem={singleOrOnlyCartItem}
+                           fullCartItem={fullCartItem}
+                           onAddToCart={handleAddToCart}
+                           onUpdateQuantity={updateQuantity}
                         />
                       );
                     })}
@@ -245,48 +269,86 @@ export default function MenuPage() {
         )}
       </main>
 
-      {/* ── Floating Cart Button ─────────────────────────────────────── */}
-      {totalItems > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 px-4 pb-4 pt-2" style={{ background: "linear-gradient(to top, rgba(8,6,4,1) 70%, transparent)" }}>
-          <div className="max-w-2xl mx-auto">
+      {/* ── Bottom Navigation Bar ──────────────────────────────────────── */}
+      {(() => {
+        const currentTab = (isCartOpen || activeOrder) ? "orders" : activeNav;
+        return (
+          <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-lg border-t border-border px-6 py-2 flex justify-around items-center max-w-2xl mx-auto shadow-[0_-8px_30px_rgba(42,26,14,0.06)]">
             <button
-              onClick={() => setIsCartOpen(true)}
-              className="w-full flex items-center justify-between px-5 py-4 rounded-2xl shadow-2xl transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
-              style={{ background: "linear-gradient(135deg, #ea580c, #f59e0b)", boxShadow: "0 8px 32px rgba(234,88,12,0.35)" }}
+              onClick={() => {
+                setActiveNav("menu");
+                setSelectedCategory("All");
+                setIsCartOpen(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`flex flex-col items-center gap-0.5 text-xs font-semibold transition-all duration-300 cursor-pointer ${
+                currentTab === "menu" ? "text-primary" : "text-outline hover:text-primary"
+              }`}
             >
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center text-sm font-black text-white">
-                  {totalItems}
-                </div>
-                <span className="text-white font-black text-sm">View Cart</span>
+              <div className={`w-10 h-10 flex items-center justify-center ${
+                currentTab === "menu"
+                  ? "rounded-full bg-primary/10 text-primary"
+                  : ""
+              }`}>
+                <span className={`material-symbols-outlined text-[20px] ${currentTab === "menu" ? "font-medium" : "font-light"}`}>restaurant_menu</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-white font-black text-base font-mono">₹{cartTotal.toFixed(0)}</span>
-                <ShoppingBag size={16} className="text-white/70" />
+              <span className={`text-[9px] tracking-wide font-medium ${currentTab === "menu" ? "text-primary" : ""}`}>Menu</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveNav("search");
+                setIsCartOpen(false);
+                searchRef.current?.focus();
+              }}
+              className={`flex flex-col items-center gap-0.5 text-xs font-semibold transition-all duration-300 cursor-pointer ${
+                currentTab === "search" ? "text-accent-warm" : "text-outline hover:text-accent-warm"
+              }`}
+            >
+              <div className={`w-10 h-10 flex items-center justify-center ${
+                currentTab === "search"
+                  ? "rounded-full bg-accent-warm/10 text-accent-warm"
+                  : ""
+              }`}>
+                <span className={`material-symbols-outlined text-[20px] ${currentTab === "search" ? "font-medium" : "font-light"}`}>search</span>
               </div>
+              <span className={`text-[9px] tracking-wide font-medium ${currentTab === "search" ? "text-accent-warm" : ""}`}>Search</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveNav("orders");
+                setIsCartOpen(true);
+              }}
+              className={`relative flex flex-col items-center gap-0.5 text-xs font-semibold transition-all duration-300 cursor-pointer ${
+                currentTab === "orders" ? "text-accent-gold" : "text-outline hover:text-accent-gold"
+              }`}
+            >
+              <div className={`w-10 h-10 flex items-center justify-center ${
+                currentTab === "orders"
+                  ? "rounded-full bg-accent-gold/10 text-accent-gold"
+                  : ""
+              }`}>
+                <span className={`material-symbols-outlined text-[20px] ${currentTab === "orders" ? "font-medium" : "font-light"}`}>receipt_long</span>
+                {(totalItems > 0 || activeOrder) && (
+                  <span className={`absolute top-2 right-3 w-2.5 h-2.5 rounded-full shadow-sm ${
+                    activeOrder && totalItems === 0 ? "bg-success animate-pulse" : "bg-accent-gold"
+                  }`} />
+                )}
+              </div>
+              <span className={`text-[9px] tracking-wide font-medium ${currentTab === "orders" ? "text-accent-gold" : ""}`}>Orders</span>
             </button>
           </div>
-        </div>
-      )}
-
-      {/* ── Active Order Mini Badge ──────────────────────────────────── */}
-      {activeOrder && totalItems === 0 && (
-        <div className="fixed bottom-4 right-4 z-30">
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl shadow-xl text-xs font-black text-white transition-all hover:scale-105 active:scale-95"
-            style={{ background: "linear-gradient(135deg, #1d4ed8, #3b82f6)", boxShadow: "0 8px 24px rgba(59,130,246,0.3)" }}
-          >
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Track Order
-          </button>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Cart Drawer ──────────────────────────────────────────────── */}
       <CartDrawer
         isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
+        onClose={() => {
+          setIsCartOpen(false);
+          setActiveNav("menu");
+        }}
         cartItems={cartItems}
         cartTotal={cartTotal}
         onUpdateQuantity={updateQuantity}
@@ -297,6 +359,7 @@ export default function MenuPage() {
         tableId={tableId}
         activeOrder={activeOrder}
         onResetOrder={resetActiveOrder}
+        onRequestHelp={handleCallHelp}
       />
     </div>
   );

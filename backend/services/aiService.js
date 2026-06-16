@@ -17,42 +17,42 @@ function generateFallbackResponse(userMessage) {
   const msg = userMessage.toLowerCase();
   
   if (msg.includes("hello") || msg.includes("hi ") || msg.includes("hey")) {
-    return "Hello! Welcome to Cafe x96. ☕ I'm Bean, your digital barista. What can I get started for you today? You can ask about our menu, combos, or vegetarian options!";
+    return "Hello! Welcome to Cafe x96. ☕ I'm Bean, your digital barista. What can I get started for you today? You can ask about our noodles, fried rice, starter dishes, or warm tea and coffee!";
   }
   
   if (msg.includes("coffee") || msg.includes("espresso") || msg.includes("cappuccino") || msg.includes("macchiato")) {
-    return "We have wonderful coffees! ☕ Our signature is the **Signature Espresso Gold** ($4.50) topped with real edible gold leaf. If you like it sweet, I highly recommend the **Caramel Macchiato Crystal** ($5.20). Would you like to add one to your cart?";
+    return "We have fantastic hot coffee! ☕ Try our **Hand Brewed Coffee** (₹40.00) or **Hot Chocolate Coffee** (₹45.00). For a traditional experience, we also serve **Special Gahwa with Kajur** (₹40.00) with premium dates. Would you like to add one to your cart?";
   }
   
   if (msg.includes("tea") || msg.includes("matcha") || msg.includes("chai")) {
-    return "Our tea selection is premium! 🍵 Try our ceremonial **Royal Matcha Latte** ($4.80) whisked with oat milk, or our warming **Cardamom Masala Chai** ($3.50). For a refreshing cold drink, the **Rose Hibiscus Cold Tea** ($4.20) is perfect!";
+    return "Our tea selection is classic! 🍵 Try our strong brewed **Chai** (₹20.00) or a smaller **Single Chai** (₹15.00). We also have refreshing **Lemon Honey Tea** (₹25.00) and premium **Green Tea** (₹25.00).";
   }
 
-  if (msg.includes("snack") || msg.includes("food") || msg.includes("croissant") || msg.includes("toast") || msg.includes("paneer") || msg.includes("panini")) {
-    return "For a quick bite, we have our flaky **Truffle Cheese Croissant** ($5.50) or the **Avocado Sourdough Toast** ($7.20). 🥐 Looking for something spicy? The **Spicy Peri-Peri Paneer Slider** ($6.50) has a delicious kick!";
+  if (msg.includes("snack") || msg.includes("food") || msg.includes("noodles") || msg.includes("rice") || msg.includes("manchurian") || msg.includes("starter") || msg.includes("slider") || msg.includes("croissant")) {
+    return "We have delicious mains and starters! 🍜 Try our popular **Veg Noodles** (₹60.00) or spicy **Schezwan Noodles** (₹80.00). For rice dishes, we have **Veg Fried Rice** (₹60.00) and **Chicken Fried Rice** (₹80.00). For starters, you'll love **Veg Manchurian** (₹80.00) or **Chicken 65** (₹130.00)!";
   }
 
   if (msg.includes("veg") || msg.includes("vegetarian")) {
-    return "Almost everything on our menu is vegetarian-friendly! 🌱 All our coffees, teas, and desserts are vegetarian. For snacks, the **Truffle Cheese Croissant**, **Avocado Sourdough Toast**, and **Spicy Peri-Peri Paneer Slider** are vegetarian. Only our **Smoked Chicken Pesto Panini** contains chicken!";
+    return "We have plenty of vegetarian options! 🌱 All our Noodles and Rice have veg versions (like **Veg Noodles** and **Veg Fried Rice**). Our **Veg Manchurian** (₹80.00) is a great starter. All beverages are vegetarian. Items like Chicken Biryani, Chicken Noodles, Egg Fried Rice, and Egg Specials contain chicken or egg.";
   }
 
-  if (msg.includes("sweet") || msg.includes("dessert") || msg.includes("cake") || msg.includes("brownie") || msg.includes("tart")) {
-    return "Indulge your sweet tooth! 🍰 Our popular **Saffron Tres Leches Cake** ($6.80) is soaked in saffron cream and is absolutely divine. We also have a rich **Double Chocolate Fudge Brownie** ($4.80) served with vanilla ice cream!";
+  if (msg.includes("sweet") || msg.includes("dessert") || msg.includes("cake") || msg.includes("brownie")) {
+    return "We don't have cakes or desserts on our main menu right now, but we recommend our sweet **Hot Chocolate Coffee** (₹45.00) or a mango **Maaza** (₹25.00) to satisfy your sweet tooth! 🍫";
   }
 
   if (msg.includes("combo") || msg.includes("offer") || msg.includes("suggest combo")) {
-    return "We have three premium combos! 🎁 \n1. **Premium Sunrise Combo** ($11.00): Espresso + Truffle Croissant (Save money!)\n2. **Classic High Tea Combo** ($9.50): Masala Chai + Avocado Toast\n3. **Decadent Duo Combo** ($10.00): Caramel Macchiato + Double Chocolate Brownie. Which one sounds best?";
+    return "We don't have preset combos on the digital menu today, but you can easily create your own! Try pairing **Veg Noodles** with a cool **Sprite** for a perfect combo. 🎁";
   }
 
   if (msg.includes("spicy")) {
-    return "If you like a bit of spice, you must try the **Spicy Peri-Peri Paneer Slider** ($6.50)! 🌱 It features grilled paneer coated in a fiery peri-peri glaze. Pair it with a cool **Rose Hibiscus Cold Tea** to balance the heat!";
+    return "If you like a bit of spice, you must try the spicy **Schezwan Noodles** (₹80.00) or our crispy **Chicken 65** (₹130.00)! 🌶️ Pair it with a cool **Coke** (₹15.00) to balance the heat!";
   }
 
-  if (msg.includes("best") || msg.includes("popular") || msg.includes("recommend")) {
-    return "Our top recommendations are the **Signature Espresso Gold** ☕, the **Truffle Cheese Croissant** 🥐, and the **Saffron Tres Leches Cake** 🍰. Together, they make the ultimate Cafe x96 luxury experience!";
+  if (msg.includes("best") || msg.includes("popular") || msg.includes("recommend") || msg.includes("biryani")) {
+    return "Our top recommendations are the **Chicken Biryani** (₹130.00) 🍛, the **Veg Noodles** (₹60.00) 🍜, and **Special Gahwa with Kajur** (₹40.00) 🫖. Together, they make the ultimate Cafe x96 experience!";
   }
 
-  return "I'd love to help you with that! At Cafe x96, we serve signature coffee, craft teas, freshly baked croissants, and premium desserts. Ask me about ingredients, combos, or dietary preferences! ☕✨";
+  return "I'd love to help you with that! At Cafe x96, we serve wok-tossed noodles, fried rice, Manchurian starters, egg specials, and premium hot & cold beverages. Ask me about ingredients, veg options, or recommendations! ☕✨";
 }
 
 export async function askClaude(messageHistory, currentMenu = []) {
@@ -62,7 +62,7 @@ export async function askClaude(messageHistory, currentMenu = []) {
   const menuContext = menuToUse
     .map(
       (item) =>
-        `- [${item.category}] ${item.name} ($${item.price.toFixed(2)}) - ${item.isVeg ? "Veg" : "Non-Veg"}. ${item.isOutOfStock ? "CURRENTLY OUT OF STOCK (DO NOT RECOMMEND)" : "In Stock"}. Rating: ${item.rating}. Description: ${item.description}`
+        `- [${item.category}] ${item.name} (₹${item.price.toFixed(2)}) - ${item.isVeg ? "Veg" : "Non-Veg"}. ${item.isOutOfStock ? "CURRENTLY OUT OF STOCK (DO NOT RECOMMEND)" : "In Stock"}. Rating: ${item.rating}. Description: ${item.description}`
     )
     .join("\n");
 
@@ -75,13 +75,13 @@ ${menuContext}
 Rules:
 1. ONLY recommend and discuss items that are on the Cafe x96 menu. If they ask for something not on the menu, politely say we don't serve it, but offer a close match from our menu.
 2. If they ask for recommendations:
-   - Strong Coffee: Suggest Signature Espresso Gold.
-   - Sweet Coffee: Suggest Caramel Macchiato Crystal.
-   - Cool Drink: Suggest Rose Hibiscus Cold Tea or Irish Whiskey Brew (Non-Alcoholic).
-   - Spicy Snack: Suggest Spicy Peri-Peri Paneer Slider.
-   - Match/Tea: Suggest Royal Matcha Latte or Cardamom Masala Chai.
+   - Strong Coffee: Suggest Hand Brewed Coffee or Black Coffee.
+   - Sweet Coffee: Suggest Hot Chocolate Coffee.
+   - Cool Drink: Suggest Coke 200ml or Sprite 200ml.
+   - Spicy Food: Suggest Schezwan Noodles or Chicken 65.
+   - Tea/Chai: Suggest Chai or Green Tea.
 3. DO NOT recommend any item that is marked CURRENTLY OUT OF STOCK. If a customer specifically asks for an out-of-stock item, politely inform them it is currently sold out and suggest an available alternative item from the same category!
-4. Be brief, warm, and use cafe-themed emojis (☕, 🥐, 🍵, 🍰, ✨). Keep responses under 3 sentences where possible.`;
+4. Be brief, warm, and use cafe-themed emojis (☕, 🍜, 🍚, 🌶️, ✨). Keep responses under 3 sentences where possible.`;
 
   if (!isApiKeyConfigured) {
     // Wait briefly to simulate API network call typing state
@@ -91,10 +91,15 @@ Rules:
   }
 
   try {
-    const formattedMessages = messageHistory.map((m) => ({
+    let formattedMessages = messageHistory.map((m) => ({
       role: m.sender === "user" ? "user" : "assistant",
       content: m.content,
     }));
+
+    // Anthropic API requires the first message in the message list to be from the 'user'
+    if (formattedMessages.length > 0 && formattedMessages[0].role === "assistant") {
+      formattedMessages = formattedMessages.slice(1);
+    }
 
     const response = await anthropic.messages.create({
       model: "claude-3-5-sonnet-20241022",

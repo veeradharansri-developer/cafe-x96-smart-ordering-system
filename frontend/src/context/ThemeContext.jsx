@@ -6,7 +6,7 @@ const ThemeContext = createContext();
 export function ThemeProvider({ children }) {
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem("theme");
-    return saved ? saved === "dark" : true; // Default to dark mode for premium look
+    return saved ? saved === "dark" : false; // Default to light mode (authoritative visual source)
   });
 
   useEffect(() => {

@@ -27,19 +27,19 @@ function ToastItem({ toast, onRemove }) {
 
   return (
     <div
-      className={`pointer-events-auto flex items-center gap-3 bg-[#1a1208] border border-amber-500/40 text-amber-100 px-4 py-3 rounded-2xl shadow-2xl shadow-amber-900/30 backdrop-blur-xl min-w-[220px] max-w-[300px] transition-all duration-300 ${
+      className={`pointer-events-auto flex items-center gap-3 bg-white border border-border text-on-background px-4 py-3 rounded-2xl custom-shadow min-w-[220px] max-w-[300px] transition-all duration-300 ${
         visible ? "opacity-100 translate-x-0 scale-100" : "opacity-0 translate-x-8 scale-95"
       }`}
     >
       <span className="text-xl">{toast.emoji}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold text-amber-300 truncate">{toast.title}</p>
-        <p className="text-[10px] text-amber-100/60 truncate">{toast.message}</p>
+        <p className="text-xs font-bold text-on-background truncate">{toast.title}</p>
+        <p className="text-[10px] text-secondary truncate">{toast.message}</p>
       </div>
-      <CheckCircle size={14} className="text-amber-400 flex-shrink-0" />
+      <CheckCircle size={14} className="text-success flex-shrink-0" />
       <button
         onClick={() => { setVisible(false); setTimeout(() => onRemove(toast.id), 300); }}
-        className="text-amber-100/40 hover:text-amber-100 transition-colors flex-shrink-0"
+        className="text-secondary hover:text-primary transition-colors flex-shrink-0"
       >
         <X size={12} />
       </button>
