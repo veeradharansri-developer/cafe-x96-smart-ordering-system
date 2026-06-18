@@ -21,35 +21,35 @@ function generateFallbackResponse(userMessage) {
   }
   
   if (msg.includes("coffee") || msg.includes("espresso") || msg.includes("cappuccino") || msg.includes("macchiato")) {
-    return "We have fantastic hot coffee! ☕ Try our **Hand Brewed Coffee** (₹40.00) or **Hot Chocolate Coffee** (₹45.00). For a traditional experience, we also serve **Special Gahwa with Kajur** (₹40.00) with premium dates. Would you like to add one to your cart?";
+    return "We have fantastic hot coffee! ☕ Try one of these options:\n1. **Hand Brewed Coffee** (₹40.00)\n2. **Hot Chocolate Coffee** (₹45.00)\n3. **Special Gahwa with Kajur** (₹40.00) - served with premium dates\n\nWould you like to add one to your cart?";
   }
   
   if (msg.includes("tea") || msg.includes("matcha") || msg.includes("chai")) {
-    return "Our tea selection is classic! 🍵 Try our strong brewed **Chai** (₹20.00) or a smaller **Single Chai** (₹15.00). We also have refreshing **Lemon Honey Tea** (₹25.00) and premium **Green Tea** (₹25.00).";
+    return "Our tea selection is classic! 🍵 Here is what we serve:\n1. **Chai** (₹20.00) - strong brewed\n2. **Single Chai** (₹15.00) - small cup\n3. **Lemon Honey Tea** (₹25.00)\n4. **Green Tea** (₹25.00)";
   }
 
   if (msg.includes("snack") || msg.includes("food") || msg.includes("noodles") || msg.includes("rice") || msg.includes("manchurian") || msg.includes("starter") || msg.includes("slider") || msg.includes("croissant")) {
-    return "We have delicious mains and starters! 🍜 Try our popular **Veg Noodles** (₹60.00) or spicy **Schezwan Noodles** (₹80.00). For rice dishes, we have **Veg Fried Rice** (₹60.00) and **Chicken Fried Rice** (₹80.00). For starters, you'll love **Veg Manchurian** (₹80.00) or **Chicken 65** (₹130.00)!";
+    return "We have delicious mains and starters! 🍜 Here are some popular options:\n1. **Veg Noodles** (₹60.00)\n2. **Schezwan Noodles** (₹80.00) - spicy\n3. **Veg Fried Rice** (₹60.00)\n4. **Chicken Fried Rice** (₹80.00)\n5. **Veg Manchurian** (₹80.00)\n6. **Chicken 65** (₹130.00)";
   }
 
   if (msg.includes("veg") || msg.includes("vegetarian")) {
-    return "We have plenty of vegetarian options! 🌱 All our Noodles and Rice have veg versions (like **Veg Noodles** and **Veg Fried Rice**). Our **Veg Manchurian** (₹80.00) is a great starter. All beverages are vegetarian. Items like Chicken Biryani, Chicken Noodles, Egg Fried Rice, and Egg Specials contain chicken or egg.";
+    return "We have plenty of vegetarian options! 🌱 Here is what we recommend:\n1. **Veg Noodles** (₹60.00)\n2. **Veg Fried Rice** (₹60.00)\n3. **Veg Manchurian** (₹80.00)\n\nAll beverages are also 100% vegetarian. Note that Chicken Biryani, Chicken Noodles, Egg Fried Rice, and Egg Specials contain chicken or egg.";
   }
 
   if (msg.includes("sweet") || msg.includes("dessert") || msg.includes("cake") || msg.includes("brownie")) {
-    return "We don't have cakes or desserts on our main menu right now, but we recommend our sweet **Hot Chocolate Coffee** (₹45.00) or a mango **Maaza** (₹25.00) to satisfy your sweet tooth! 🍫";
+    return "We don't have cakes or desserts on our main menu right now, but we recommend these sweet treats:\n1. **Hot Chocolate Coffee** (₹45.00)\n2. **Maaza** (₹25.00) - mango juice";
   }
 
   if (msg.includes("combo") || msg.includes("offer") || msg.includes("suggest combo")) {
-    return "We don't have preset combos on the digital menu today, but you can easily create your own! Try pairing **Veg Noodles** with a cool **Sprite** for a perfect combo. 🎁";
+    return "We don't have preset combos on the digital menu today, but you can easily create your own! Try pairing:\n1. **Veg Noodles** (₹60.00) + **Sprite** (₹15.00)\n2. **Chicken Biryani** (₹130.00) + **Coke** (₹15.00)";
   }
 
   if (msg.includes("spicy")) {
-    return "If you like a bit of spice, you must try the spicy **Schezwan Noodles** (₹80.00) or our crispy **Chicken 65** (₹130.00)! 🌶️ Pair it with a cool **Coke** (₹15.00) to balance the heat!";
+    return "If you like a bit of spice, we highly recommend:\n1. **Schezwan Noodles** (₹80.00)\n2. **Chicken 65** (₹130.00)\n\nPair either with a cool **Coke** (₹15.00) to balance the heat! 🌶️";
   }
 
   if (msg.includes("best") || msg.includes("popular") || msg.includes("recommend") || msg.includes("biryani")) {
-    return "Our top recommendations are the **Chicken Biryani** (₹130.00) 🍛, the **Veg Noodles** (₹60.00) 🍜, and **Special Gahwa with Kajur** (₹40.00) 🫖. Together, they make the ultimate Cafe x96 experience!";
+    return "Here are our top recommendations for the ultimate Cafe x96 experience:\n1. **Chicken Biryani** (₹130.00) 🍛\n2. **Veg Noodles** (₹60.00) 🍜\n3. **Special Gahwa with Kajur** (₹40.00) 🫖";
   }
 
   return "I'd love to help you with that! At Cafe x96, we serve wok-tossed noodles, fried rice, Manchurian starters, egg specials, and premium hot & cold beverages. Ask me about ingredients, veg options, or recommendations! ☕✨";
@@ -81,7 +81,9 @@ Rules:
    - Spicy Food: Suggest Schezwan Noodles or Chicken 65.
    - Tea/Chai: Suggest Chai or Green Tea.
 3. DO NOT recommend any item that is marked CURRENTLY OUT OF STOCK. If a customer specifically asks for an out-of-stock item, politely inform them it is currently sold out and suggest an available alternative item from the same category!
-4. Be brief, warm, and use cafe-themed emojis (☕, 🍜, 🍚, 🌶️, ✨). Keep responses under 3 sentences where possible.`;
+4. When listing recommendations or answering questions about options, ALWAYS present the items in a structured numbered list (ordered form) instead of inline sentences. Example:
+   1. **Item Name** (₹Price) - Description
+5. Keep responses brief, warm, and use cafe-themed emojis (☕, 🍜, 🍚, 🌶️, ✨).`;
 
   if (!isApiKeyConfigured) {
     // Wait briefly to simulate API network call typing state
