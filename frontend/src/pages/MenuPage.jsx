@@ -44,7 +44,6 @@ export default function MenuPage() {
 
   // ── Try to fetch fresh menu from API (for live admin edits) ────────────────
   useEffect(() => {
-    if (!API_BASE && window.location.hostname !== 'localhost') return; // skip on Vercel
     fetch(`${API_BASE}/api/menu`)
       .then((r) => { if (!r.ok) throw new Error('no backend'); return r.json(); })
       .then((data) => { if (Array.isArray(data) && data.length > 0) setMenu(data); })
