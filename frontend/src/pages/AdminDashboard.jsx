@@ -1113,6 +1113,19 @@ export default function AdminDashboard() {
                 />
               </div>
 
+              <div>
+                <label className="block text-[10px] text-secondary uppercase tracking-wider mb-1.5 font-bold">
+                  Description
+                </label>
+                <textarea
+                  placeholder="Describe this delicious menu item..."
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
+                  rows="3"
+                  className="w-full bg-white border border-border focus:border-primary rounded-input px-4 py-2.5 text-xs text-on-background focus:outline-none transition-colors resize-none"
+                />
+              </div>
+
               <div className="flex flex-col gap-3.5 pt-1">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
