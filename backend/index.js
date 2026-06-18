@@ -33,47 +33,7 @@ const io = new Server(httpServer, {
 });
 
 // Pre-seeded database for orders (in-memory)
-let orders = [
-  {
-    id: "ord-101",
-    tableNumber: "3",
-    customerName: "Jane Doe",
-    items: [
-      { id: "b1", name: "Chicken Biryani", price: 130.00, quantity: 1 },
-      { id: "cd4", name: "Coke 200ml", price: 15.00, quantity: 2 }
-    ],
-    notes: "Please serve cold Coke with the Biryani",
-    timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), // 3 hours ago
-    total: 160.00,
-    status: "Served"
-  },
-  {
-    id: "ord-102",
-    tableNumber: "1",
-    customerName: "Alex Smith",
-    items: [
-      { id: "m4", name: "Chicken 65", price: 130.00, quantity: 2 },
-      { id: "hb1", name: "Chai", price: 20.00, quantity: 2 }
-    ],
-    notes: "Make the Chai extra hot",
-    timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 mins ago
-    total: 300.00,
-    status: "Preparing"
-  },
-  {
-    id: "ord-103",
-    tableNumber: "5",
-    customerName: "Sam Wilson",
-    items: [
-      { id: "n1", name: "Veg Noodles", price: 60.00, quantity: 1 },
-      { id: "cd5", name: "Maaza 250ml", price: 25.00, quantity: 1 }
-    ],
-    notes: "No onions in the noodles please",
-    timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5 mins ago
-    total: 85.00,
-    status: "Pending"
-  }
-];
+let orders = [];
 
 // Active help requests tracker
 let activeHelpRequests = {};
