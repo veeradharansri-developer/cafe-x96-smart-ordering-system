@@ -34,6 +34,7 @@ export default function MenuPage() {
   const [menu, setMenu] = useState(localMenuData); // ← local data loads instantly
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("popularity");
   const [activeNav, setActiveNav] = useState("menu");
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [helpSent, setHelpSent] = useState(false);
@@ -96,8 +97,28 @@ export default function MenuPage() {
     menu.reduce((acc, item) => { acc[item.category] = true; return acc; }, {})
   )];
 
+  // Sort the menu items based on selection
+  const sortedMenu = [...menu].sort((a, b) => {
+    if (sortBy === "popularity") {
+      // Sort by isPopular (true first)
+      if (a.isPopular && !b.isPopular) return -1;
+      if (!a.isPopular && b.isPopular) return 1;
+      return 0;
+    }
+    if (sortBy === "rating-desc") {
+      return (b.rating || 0) - (a.rating || 0);
+    }
+    if (sortBy === "price-asc") {
+      return a.price - b.price;
+    }
+    if (sortBy === "price-desc") {
+      return b.price - a.price;
+    }
+    return 0;
+  });
+
   // Group menu by category, applying filters
-  const filteredBySearch = menu.filter((item) => {
+  const filteredBySearch = sortedMenu.filter((item) => {
     const q = searchQuery.toLowerCase();
     return (
       item.name.toLowerCase().includes(q) ||
@@ -193,9 +214,21 @@ export default function MenuPage() {
                     </button>
                   )}
                 </div>
-                <button className="flex items-center justify-center px-4 py-3 rounded-full bg-accent-warm text-white font-semibold shadow-sm hover:shadow-md transition-all border border-transparent">
-                  <span className="material-symbols-outlined text-[20px] font-light">tune</span>
-                </button>
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="appearance-none pl-4 pr-10 py-3.5 rounded-full bg-accent-warm text-white font-semibold shadow-sm hover:shadow-md transition-all border border-transparent focus:outline-none cursor-pointer text-sm"
+                  >
+                    <option value="popularity" className="text-on-background bg-white font-sans font-semibold">Popularity</option>
+                    <option value="rating-desc" className="text-on-background bg-white font-sans font-semibold">Rating: High to Low</option>
+                    <option value="price-asc" className="text-on-background bg-white font-sans font-semibold">Price: Low to High</option>
+                    <option value="price-desc" className="text-on-background bg-white font-sans font-semibold">Price: High to Low</option>
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-white flex items-center">
+                    <span className="material-symbols-outlined text-[18px] font-light">keyboard_arrow_down</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
